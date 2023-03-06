@@ -5,8 +5,8 @@ library(dplyr)
 library(XML)
 library(RCurl)
 
-file_list <- list.files(path="./data/raws/AZ", full.names = TRUE)
-file_names<- list.files(path="./data/raws/AZ", full.names = FALSE)
+file_list <- list.files(path="./data/raws", full.names = TRUE, recursive = TRUE)
+file_names<- list.files(path="./data/raws", full.names = FALSE, recursive = TRUE, include.dirs = FALSE)
 
 #####
 # calculate burning hours
@@ -25,8 +25,8 @@ for(i in 1:length(file_list)){
   
   # get station metadata and check for recent data
   #url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-",format(Sys.time(), "%Y"),"&end=31-Dec-",format(Sys.time(), "%Y"),"&time=&sort=&ndays=")
-  stnID<-substr(file_names[i], 1,6)
-  url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",stnID,"&sig=&type=&start=&end=&time=&sort=asc&ndays=5&user=")
+  stnID<-substr(file_names[i], 4,9)
+  url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",stnID,"&sig=&type=&start=&end=&time=&sort=asc&ndays=10&user=")
   # past year
   #url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-","2021","&end=31-Dec-","2021","&time=&sort=&ndays=")
     xData <- getURL(url)
@@ -40,10 +40,11 @@ for(i in 1:length(file_list)){
       j=j+1
     }else{
       
-      stnName<-rawsMeta$sta_nm[1]
-      lat<-rawsMeta$latitude[1]
-      lon<-rawsMeta$longitude[1]
-      
+      stnName<-as.character(rawsMeta$sta_nm[1])
+      lat<-as.numeric(as.character(rawsMeta$latitude))
+      lon<-as.numeric(as.character(rawsMeta$longitude))
+        lat<-lat[1]
+        lon<-lon[1]
       # count of burn hours
       burnHRS<-  tempRAWS %>%
         group_by(year, month, day) %>%
@@ -64,16 +65,18 @@ for(i in 1:length(file_list)){
       # complete list
       burnHRS<-merge(burnHRS, dates, by="date", all.y=TRUE)
       
-      stnName<-rawsMeta$sta_nm[1]
-      lat<-rawsMeta$latitude[1]
-      lon<-rawsMeta$longitude[1]
+      # stnName<-rawsMeta$sta_nm[1]
+      # lat<-rawsMeta$latitude[1]
+      # lon<-rawsMeta$longitude[1]
       
       # add in station info
-      burnHRS$LATITUDE<-as.numeric(rawsMeta$latitude[1])
-      burnHRS$LONGITUDE<-as.numeric(rawsMeta$longitude[1])
-      burnHRS$STA_NAME<-rawsMeta$sta_nm[1]
+      burnHRS$LATITUDE<-lat
+      burnHRS$LONGITUDE<-lon
+      burnHRS$STA_NAME<-stnName
       #burnHRS$PSA_NAME<-sw_rawsDF$PSA_NAME[i]
       burnHRS$StationNum<-stnID
+      elev<-elevatr::get_elev_point(data.frame(x=lon,y=lat),prj = "EPSG:4326", src = "aws")
+        burnHRS$elev<-round(elev@data$elevation*3.28084,0)
       
       # add in doy
       burnHRS$doy<-as.numeric(format(burnHRS$date, "%j"))
@@ -81,14 +84,17 @@ for(i in 1:length(file_list)){
       burnHRS$year<-as.numeric(format(burnHRS$date, "%Y"))
       burnHRS$month<-as.numeric(format(burnHRS$date, "%m"))
       
+      # limit to set period of record
+      burnHRS<-subset(burnHRS, year<=2022)
+      
       # put into list
       burnList[[k]]<-burnHRS
       k=k+1
       # print loop update
-      print(paste0(stnName,", ",i," out of ",length(file_list)))
+      print(paste0(stnName,", ",i," out of ",length(file_list)," (",lat,",",lon,")"))
     }
 }
 
-save(burnList, file = "/home/crimmins/RProjects/BurnPeriodTracker/burnList.RData")
+save(burnList, file = "./data/burnClimoList.RData")
 #####
 
