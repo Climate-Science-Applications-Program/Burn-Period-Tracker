@@ -2,7 +2,7 @@
 # adapted from BurnPeriod_tracker_wFcst.R
 # MAC 02/28/23, V2.0
 #####
-# To do: fix disconnect between observed and forecasted burn period, color flags to recent burn period...
+# To do: fix disconnect between observed and forecasted burn period, 
 #####
 
 ptm <- proc.time()
@@ -142,6 +142,21 @@ for(i in 1:length(burnList)){
     
     #####
     
+    #####
+    # plot with legend data
+    currBurnHRS$var<-"Observed"
+     tempBurnHrs<-currBurnHRS[,c("date","Burn_hours","var")]
+     colnames(tempBurnHrs)<-c("date","hours","var")
+    fcst_bhrs$var<-"Forecast"
+     tempFcstHrs<-fcst_bhrs[,c("date","Burn_hours_forecast","var")]
+     colnames(tempFcstHrs)<-c("date","hours","var")
+    tempDay10avg<-currBurnHRS[,c("date","avg_10days")]
+     tempDay10avg$var<-"10-day Avg"
+     colnames(tempDay10avg)<-c("date","hours","var")
+    plotData<-rbind.data.frame(tempBurnHrs,tempFcstHrs,tempDay10avg)
+    
+
+    #####
     
     # make the plot
     barWidth<-1
@@ -154,33 +169,45 @@ for(i in 1:length(burnList)){
       #      panel.background = element_blank()) +
       geom_line(colour='grey',size=0.5)+
       geom_linerange(dayQuantiles, mapping=aes(x=date, ymin=q5th_percentile, ymax=q90th_percentile), colour = "grey83",alpha=0.4, size=barWidth, show.legend = NA)
-    p<-p1 + geom_line(data=currBurnHRS,aes(date,Burn_hours, color=yr), size=0.5) +
-      scale_colour_manual(values=c("red"),name='Year')+
-      theme(legend.position=c(0.92,0.75),
+    # p<-p1 + geom_line(data=currBurnHRS,aes(date,Burn_hours, color=yr), size=0.5) +
+    #   scale_colour_manual(values=c("red"),name='Year')+
+    #   theme(legend.position=c(0.92,0.75),
+    #         legend.title=element_blank(),
+    #         legend.background = element_rect(fill=alpha('white', 0)))+
+    #   #scale_y_discrete(name ="Burn period (hrs)", 
+    #   #                 limits=c(0,4,8,12,16,20,24))+
+    #   scale_y_continuous(name ="Burn period (hrs)",breaks=c(0,4,8,12,16,20,24),limits=c(0, 24))+
+    #   
+    #   scale_x_date(labels = date_format("%b"), date_breaks = "1 month")+
+    #   ggtitle(plotTitle)
+    
+    p<-p1 + geom_line(data=plotData,aes(date,hours, color=var,linetype=var), size=0.5) +
+      scale_colour_manual(values=c("darkorange4","forestgreen","red"))+
+      scale_linetype_manual(values=c("dashed", "solid","solid"))+
+      theme(legend.position=c(0.95,0.74),
             legend.title=element_blank(),
             legend.background = element_rect(fill=alpha('white', 0)))+
       #scale_y_discrete(name ="Burn period (hrs)", 
       #                 limits=c(0,4,8,12,16,20,24))+
-      scale_y_continuous(name ="Burn period (hrs)",breaks=c(0,4,8,12,16,20,24),limits=c(0, 24))+
+      scale_y_continuous(name ="Burn period (hrs)",breaks=c(0,4,8,12,16,20,24),limits=c(0, 24),expand = c(0,0))+
       
-      scale_x_date(labels = date_format("%b"), date_breaks = "1 month")+
+      scale_x_date(labels = date_format("%b"), date_breaks = "1 month", expand = c(0,0))+
       ggtitle(plotTitle)
     
-    
-    p<-p + geom_line(data=currBurnHRS,aes(date,avg_10days), size=0.5,linetype = "dashed", color="darkorange4") +
-      #scale_colour_manual(values=c("red"),name='Year')+
-      theme(legend.position=c(0.92,0.75),
-            legend.title=element_blank(),
-            legend.background = element_rect(fill=alpha('white', 0)))+
-      #scale_y_discrete(name ="Burn period (hrs)", 
-      #                 limits=c(0,4,8,12,16,20,24))+
-      scale_y_continuous(name ="Burn period (hrs)",breaks=c(0,4,8,12,16,20,24),limits=c(0, 24))+
-      
-      scale_x_date(labels = date_format("%b"), date_breaks = "1 month")+
-      ggtitle(plotTitle)
+    # p<-p + geom_line(data=currBurnHRS,aes(date,avg_10days), size=0.5,linetype = "dashed", color="darkorange4") +
+    #   #scale_colour_manual(values=c("red"),name='Year')+
+    #   theme(legend.position=c(0.92,0.75),
+    #         legend.title=element_blank(),
+    #         legend.background = element_rect(fill=alpha('white', 0)))+
+    #   #scale_y_discrete(name ="Burn period (hrs)", 
+    #   #                 limits=c(0,4,8,12,16,20,24))+
+    #   scale_y_continuous(name ="Burn period (hrs)",breaks=c(0,4,8,12,16,20,24),limits=c(0, 24))+
+    #   
+    #   scale_x_date(labels = date_format("%b"), date_breaks = "1 month")+
+    #   ggtitle(plotTitle)
     
     # add in forecast line
-    p<-p + geom_line(data=fcst_bhrs, aes(date,Burn_hours_forecast), size=0.5, color="forestgreen")
+    #p<-p + geom_line(data=fcst_bhrs, aes(date,Burn_hours_forecast), size=0.5, color="forestgreen")
     
     
     # interactive plot
@@ -208,7 +235,7 @@ for(i in 1:length(burnList)){
             axis.ticks.y=element_blank())
     
     g <- ggplotGrob(insetmap)
-    p<-p + annotation_custom(grob = g, xmin = as.Date(paste0(dumYr,"-11-01")), xmax = Inf, ymin = 20, ymax = Inf)+
+    p<-p + annotation_custom(grob = g, xmin = as.Date(paste0(dumYr,"-11-19")), xmax = Inf, ymin = 20, ymax = Inf)+
       labs(caption=paste0("Updated: ",format(Sys.time(), "%Y-%m-%d")," (current through ",format(currBurnHRS$date[max(which(is.na(currBurnHRS$Burn_hours)==TRUE))-1], "%m-%d"),")",
                           "\nBurn Period is total hours/day with RH<20%\n10-day moving avg(dashed line); 7-day NOAA NDFD forecast(green line)\nClimatology represents daily smoothed mean and range\n of values between 5th and 95th percentiles\nRAWS Data Source: famprod.nwcg.gov & cefa.dri.edu"))
     
