@@ -41,6 +41,12 @@ load("/home/crimmins/RProjects/BurnPeriodTracker/data/burnClimoList.RData")
 
 # create page data list
 pageData<-list()
+# list of errors
+errorList<-list()
+
+# for(i in 1:length(burnList)){
+#   stations[i]<-burnList[[i]]$STA_NAME[1]
+# }
 
 
 #####
@@ -70,6 +76,7 @@ for(i in 1:length(burnList)){
   url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-",format(Sys.time(), "%Y"),"&end=31-Dec-",format(Sys.time(), "%Y"),"&time=&sort=&ndays=")
   # past year
   #url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-","2021","&end=31-Dec-","2021","&time=&sort=&ndays=")
+  tryCatch({
   xData <- getURL(url)
   xmldoc <- xmlParse(xData)
   currYear <- xmlToDataFrame(xData)
@@ -313,6 +320,10 @@ for(i in 1:length(burnList)){
   else{
     
   }
+  
+  },  error=function(e){cat("ERROR :",conditionMessage(e), "\n")
+                        errorList[[i]]<-temp$STA_NAME[1]})
+  
 }
 
 proc.time() - ptm
@@ -382,5 +393,8 @@ render(paste0('/home/crimmins/RProjects/BurnPeriodTracker/BurnPeriod_Markdown.Rm
 
 source('/home/crimmins/RProjects/BurnPeriodTracker/pushNotify.R')
 
+if(length(errorList)!=0){
+  source('/home/crimmins/RProjects/BurnPeriodTracker/pushNotifyError.R')
+}
 
 
