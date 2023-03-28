@@ -43,6 +43,8 @@ load("/home/crimmins/RProjects/BurnPeriodTracker/data/burnClimoList.RData")
 pageData<-list()
 # list of errors
 errorList<-list()
+# list for maps
+mapList<-list()
 
 # for(i in 1:length(burnList)){
 #   stations[i]<-burnList[[i]]$STA_NAME[1]
@@ -324,6 +326,19 @@ for(i in 1:length(burnList)){
   },  error=function(e){cat("ERROR :",conditionMessage(e), "\n")
                         errorList[[i]]<-temp$STA_NAME[1]})
   
+  # get station data for obs/forecast map
+  temp1<-currBurnHRS[currBurnHRS$date >= Sys.Date()-6 & currBurnHRS$date <= Sys.Date()-1,]
+  temp2<-fcst_bhrs[,c('date','Burn_hours_forecast','var')]
+    colnames(temp2)[2]<-'Burn_hours'  
+  # combine into df  
+  temp2<-rbind.data.frame(temp1[,c('date','Burn_hours','var')],
+                         temp2)
+  temp2$lat<-temp$LATITUDE[1]
+  temp2$lon<-temp$LONGITUDE[1]
+  temp2$name<-temp$STA_NAME[1]
+  # add to list
+  mapList[[i]]<-temp2
+  
 }
 
 proc.time() - ptm
@@ -384,6 +399,102 @@ stnLabs <- lapply(seq(nrow(pageTable)), function(i) {
 pageTable<-pageTable[,c("STA_NAME","StationNum","LATITUDE","LONGITUDE","Elevation","CurrBurnHours","imageLinks","Interactive")]
 colnames(pageTable)<-c("Name","Number","Latitude","Longitude","Elevation(ft)","Latest Burn Period","Tracker","Interactive")
 
+##### make observed/forecast maps ----
+mapObs<-do.call(rbind, mapList)
+  pastObs<-subset(mapObs,var=="Observed")
+  pastObs<-pastObs[pastObs$date >= Sys.Date()-6 & pastObs$date <= Sys.Date()-1, ]
+  pastObs$symbol<-ifelse(is.na(pastObs$Burn_hours),1,2)
+
+# observed map  
+p<-ggplot() +
+  geom_polygon(data = states, aes(x = long, y = lat, group = group), fill=NA, color="black", size=0.1)  +
+  geom_polygon(data = sw_psa_df, aes(x = long, y = lat, group = group), fill="gray94", color="grey", alpha=0.8)  + # get the state border back on top
+  #coord_fixed(xlim=c(out$meta$ll[1]-zoomLev, out$meta$ll[1]+zoomLev), ylim=c(out$meta$ll[2]-zoomLev, out$meta$ll[2]+zoomLev), ratio = 1) +
+  coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
+  geom_point(data = pastObs, aes(x = lon, y = lat, color=Burn_hours, shape=as.factor(symbol)), size=0.75)+
+  scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)")+
+  scale_shape_manual(values=c(4,19), guide="none")+
+  facet_wrap(.~date)+
+  theme_bw(base_size=12)+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())+
+  ggtitle(paste0("SWA Observed Burn Period: ",format(min(unique(pastObs$date)),"%m-%d-%Y"), " to ", format(max(unique(pastObs$date)),"%m-%d-%Y")))
+
+# p<-p + annotation_custom(grob = g, xmin = as.Date(paste0(dumYr,"-11-19")), xmax = Inf, ymin = 20, ymax = Inf)+
+#   labs(caption=paste0("Updated: ",format(Sys.time(), "%Y-%m-%d")," (current through ",format(currBurnHRS$date[max(which(is.na(currBurnHRS$Burn_hours)==TRUE))-1], "%m-%d"),")",
+#                       "\nBurn Period is total hours/day with RH<20%\n10-day moving avg(dashed line); 7-day NOAA NDFD forecast(green line)\nClimatology represents daily smoothed mean and range\n of values between 5th and 95th percentiles\nRAWS Data Source: famprod.nwcg.gov & cefa.dri.edu"))
+
+# write out file
+png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/Observed_BurnPeriod.png"), width = 12, height = 5.5, units = "in", res = 300L)
+#grid.newpage()
+print(p, newpage = FALSE)
+dev.off()
+
+# add logos
+# Call back the plot
+plot <- image_read(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/Observed_BurnPeriod.png"))
+# And bring in a logo
+logo_raw <- image_read("/home/crimmins/RProjects/BurnPeriodTracker/CLIMAS_UACOOP_SWCC_horiz.png") 
+logo <- image_resize(logo_raw, geometry_size_percent(width=50,height = 50))
+# Stack them on top of each other
+#final_plot <- image_append((c(plot, logo)), stack = TRUE)
+#final_plot <- image_mosaic((c(plot, logo)))
+final_plot <- image_composite(plot, logo, offset = "+80+1500")
+# And overwrite the plot without a logo
+image_write(final_plot, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/Observed_BurnPeriod.png"))
+# ----
+
+# forecast map
+foreObs<-subset(mapObs,var=="Forecast")
+
+# observed map  
+p<-ggplot() +
+  geom_polygon(data = states, aes(x = long, y = lat, group = group), fill=NA, color="black", size=0.1)  +
+  geom_polygon(data = sw_psa_df, aes(x = long, y = lat, group = group), fill="gray94", color="grey", alpha=0.8)  + # get the state border back on top
+  #coord_fixed(xlim=c(out$meta$ll[1]-zoomLev, out$meta$ll[1]+zoomLev), ylim=c(out$meta$ll[2]-zoomLev, out$meta$ll[2]+zoomLev), ratio = 1) +
+  coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
+  geom_point(data = foreObs, aes(x = lon, y = lat, color=Burn_hours), size=0.75)+
+  scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)")+
+  #scale_shape_manual(values=c(4,19), guide="none")+
+  facet_wrap(.~date)+
+  theme_bw(base_size=12)+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())+
+  ggtitle(paste0("SWA Burn Period Forecast: ",format(min(unique(foreObs$date)),"%m-%d-%Y"), " to ", format(max(unique(foreObs$date)),"%m-%d-%Y")))
+
+# p<-p + annotation_custom(grob = g, xmin = as.Date(paste0(dumYr,"-11-19")), xmax = Inf, ymin = 20, ymax = Inf)+
+#   labs(caption=paste0("Updated: ",format(Sys.time(), "%Y-%m-%d")," (current through ",format(currBurnHRS$date[max(which(is.na(currBurnHRS$Burn_hours)==TRUE))-1], "%m-%d"),")",
+#                       "\nBurn Period is total hours/day with RH<20%\n10-day moving avg(dashed line); 7-day NOAA NDFD forecast(green line)\nClimatology represents daily smoothed mean and range\n of values between 5th and 95th percentiles\nRAWS Data Source: famprod.nwcg.gov & cefa.dri.edu"))
+
+# write out file
+png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/Forecast_BurnPeriod.png"), width = 12, height = 5.5, units = "in", res = 300L)
+#grid.newpage()
+print(p, newpage = FALSE)
+dev.off()
+
+# add logos
+# Call back the plot
+plot <- image_read(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/Forecast_BurnPeriod.png"))
+# And bring in a logo
+logo_raw <- image_read("/home/crimmins/RProjects/BurnPeriodTracker/CLIMAS_UACOOP_SWCC_horiz.png") 
+logo <- image_resize(logo_raw, geometry_size_percent(width=50,height = 50))
+# Stack them on top of each other
+#final_plot <- image_append((c(plot, logo)), stack = TRUE)
+#final_plot <- image_mosaic((c(plot, logo)))
+final_plot <- image_composite(plot, logo, offset = "+80+1500")
+# And overwrite the plot without a logo
+image_write(final_plot, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/Forecast_BurnPeriod.png"))
+# ----
+
+#####
 
 # create Website with markdown ----
 render(paste0('/home/crimmins/RProjects/BurnPeriodTracker/BurnPeriod_Markdown.Rmd'), output_file='index.html',

@@ -26,6 +26,9 @@ Click on markers on the map below to access Burn Period Tracker plots and recent
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## {.tabset .tabset-fade}
+
+### Current Map 
 ```{r,results='asis', echo=FALSE}
 
 # a single icon is declared
@@ -67,6 +70,21 @@ leaflet(width="100%") %>%
     
 
 ```  
+
+### Past 6-days
+
+```{r, echo=FALSE, fig.align = "center", out.width= "100%"}
+knitr::include_graphics("./plots/Observed_BurnPeriod.png")
+```
+
+### 6-day Forecast
+
+```{r, echo=FALSE, fig.align = "center", out.width= "100%"}
+knitr::include_graphics("./plots/Forecast_BurnPeriod.png")
+```
+
+#
+
 ------
 
 ```{r,results='asis', echo=FALSE}
@@ -89,9 +107,15 @@ datatable(pageTable, class = 'cell-border compact stripe', escape = FALSE, rowna
 
 <div align="center">
   <em>[Climate Science Applications Program - University of Arizona Cooperative Extension](http://cals.arizona.edu/climate/)</em>
+  
+  <p>&nbsp;</p>
+  
+  [![Latest](GitHub-Mark-32px.png)](https://github.com/Climate-Science-Applications-Program/Burn-Period-Tracker)
+<em>[https://github.com/Climate-Science-Applications-Program/Burn-Period-Tracker](https://github.com/Climate-Science-Applications-Program/Burn-Period-Tracker)</em>
+
 </div>
 
 <div align="center">
   <h6>
-  Last Updated: "`r format(Sys.time(), '%m-%d-%Y')`"© 2020 The Arizona Board of Regents. All contents copyrighted. All rights reserved.</h6>
+  Last Updated: "`r format(Sys.time(), '%m-%d-%Y')`"© 2023 The Arizona Board of Regents. All contents copyrighted. All rights reserved.</h6>
 </div>
