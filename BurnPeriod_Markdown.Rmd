@@ -28,7 +28,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## {.tabset .tabset-fade}
 
-### Current Map 
+### RAWS Sites 
 ```{r,results='asis', echo=FALSE}
 
 # a single icon is declared
@@ -54,7 +54,7 @@ leaflet(width="100%") %>%
  addEsriFeatureLayer(
     url = fires, color="red", labelProperty = "poly_IncidentName", labelOptions = labelOptions(textsize = "12px")) %>%
    addLegend("bottomright", pal = pal, values = c(0,24),
-            title = "Burn Period (hrs)",
+            title = paste0("Burn Period (hrs): </br> ",format((Sys.Date()-1),"%m-%d-%Y")),
             opacity = 1,
             labFormat = labelFormat(transform = function(x) sort(x, decreasing = FALSE)))
     # popupProperty = JS(paste0(
@@ -71,13 +71,13 @@ leaflet(width="100%") %>%
 
 ```  
 
-### Past 6-days
+### Past 7-days
 
 ```{r, echo=FALSE, fig.align = "center", out.width= "100%"}
 knitr::include_graphics("./plots/Observed_BurnPeriod.png")
 ```
 
-### 6-day Forecast
+### 7-day Forecast
 
 ```{r, echo=FALSE, fig.align = "center", out.width= "100%"}
 knitr::include_graphics("./plots/Forecast_BurnPeriod.png")
