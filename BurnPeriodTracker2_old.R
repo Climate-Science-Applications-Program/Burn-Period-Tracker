@@ -5,9 +5,8 @@
 # To do: fix disconnect between observed and forecasted burn period, 
 #####
 
-print(Sys.Date())
-
 ptm <- proc.time()
+
 
 library(rgdal)
 library(tidyr)
@@ -44,14 +43,11 @@ load("/home/crimmins/RProjects/BurnPeriodTracker/data/burnClimoList.RData")
 pageData<-list()
 # list of errors
 errorList<-list()
-# list for maps
-mapList<-list()
 
-# stations<-c()
 # for(i in 1:length(burnList)){
 #   stations[i]<-burnList[[i]]$STA_NAME[1]
 # }
-# which(stations=="BOSQUE")
+
 
 #####
 # loop through list and make plots
@@ -96,9 +92,9 @@ for(i in 1:length(burnList)){
     currBurnHRS<-  currYear %>%
       group_by(date) %>%
       summarize(n_hours = n(),
-                rh_lt_20 = sum(as.numeric(as.character(rh)) <= 20, na.rm = TRUE),
-                minRH = min(as.numeric(as.character(rh_min)), na.rm = TRUE),
-                maxRH = max(as.numeric(as.character(rh_max)), na.rm = TRUE))
+                rh_lt_20 = sum(as.numeric(rh) <= 20, na.rm = TRUE),
+                minRH = min(as.numeric((rh_min)), na.rm = TRUE),
+                maxRH = max(as.numeric((rh_max)), na.rm = TRUE))
     currBurnHRS$doy<-format(currBurnHRS$date,"%j")
     currBurnHRS$doy<-as.numeric(currBurnHRS$doy)
     # set missing days to NA
@@ -119,7 +115,7 @@ for(i in 1:length(burnList)){
     colnames(currBurnHRS)[c(3,7)]<-c("Burn_hours","avg_10days")
     
     #####
-    # NDFD Burn Period forecast, see https://graphical.weather.gov/xml/rest.php
+    # NDFD Burn Period forecast
     # url <- "http://forecast.weather.gov/MapClick.php?lat=32&lon=-112&FcstType=digitalDWML"
     url <- paste0("http://forecast.weather.gov/MapClick.php?lat=",temp[1,c("LATITUDE")],"&lon=",temp[1,c("LONGITUDE")],"&FcstType=digitalDWML")
     download.file(url=url,"/home/crimmins/RProjects/BurnPeriodTracker/url.txt" )
@@ -149,11 +145,7 @@ for(i in 1:length(burnList)){
       summarise(Burn_hours_forecast=sum(bhour),
                 nhrs =n())
     fcst_bhrs$date<-as.Date(paste0(fcst_bhrs$doy,"-",format(Sys.Date(),"%Y")),format="%j-%Y")
-    # deal with days with missing hours
-    #fcst_bhrs<-subset(fcst_bhrs, nhrs>=22)
-    # set missing days to NA
-    fcst_bhrs$Burn_hours_forecast<-ifelse(fcst_bhrs$nhrs<22,NA,fcst_bhrs$Burn_hours_forecast)
-    
+    fcst_bhrs<-subset(fcst_bhrs, nhrs>=22)
     
     #####
     
@@ -317,27 +309,12 @@ for(i in 1:length(burnList)){
     #  htmlwidgets::saveWidget(pLy, paste0("/home/crimmins/RProjects/FireClimate/BurnPeriodTracker/BurnTrackerPlots/plotly/",temp$STA_NAME[1],"_BurnPeriod.html"))
     # #######
     print(temp$STA_NAME[1])
-    print(paste0(i, " of ",length(burnList)))
     
     # store data
     temp2<-cbind.data.frame(temp$STA_NAME[1],temp$StationNum[1],temp$LATITUDE[1],temp$LONGITUDE[1], temp$elev[1], currBurnHRS$Burn_hours[max(which(currBurnHRS$n_hours==24))])
       colnames(temp2)<-c("STA_NAME","StationNum","LATITUDE","LONGITUDE","Elevation","CurrBurnHours")
     pageData[[i]]<-temp2
     #
-    
-    # get station data for obs/forecast map
-    #temp1<-currBurnHRS[currBurnHRS$date >= Sys.Date()-6 & currBurnHRS$date <= Sys.Date()-1,]
-    temp1<-currBurnHRS[((nrow(currBurnHRS)-9):nrow(currBurnHRS)),]
-    temp2<-fcst_bhrs[,c('date','Burn_hours_forecast','nhrs','var')]
-    colnames(temp2)<-c('date','Burn_hours','n_hours','var')  
-    # combine into df  
-    temp2<-rbind.data.frame(temp1[,c('date','Burn_hours','n_hours','var')],
-                            temp2)
-    temp2$lat<-temp$LATITUDE[1]
-    temp2$lon<-temp$LONGITUDE[1]
-    temp2$name<-temp$STA_NAME[1]
-    # add to list
-    mapList[[i]]<-temp2
     
   }
   else{
@@ -350,9 +327,6 @@ for(i in 1:length(burnList)){
 }
 
 proc.time() - ptm
-
-# save environment for diagnostics
-save.image("~/RProjects/BurnPeriodTracker/burnPeriodEnv.RData")
 
 # #####
 # create map page
@@ -410,108 +384,6 @@ stnLabs <- lapply(seq(nrow(pageTable)), function(i) {
 pageTable<-pageTable[,c("STA_NAME","StationNum","LATITUDE","LONGITUDE","Elevation","CurrBurnHours","imageLinks","Interactive")]
 colnames(pageTable)<-c("Name","Number","Latitude","Longitude","Elevation(ft)","Latest Burn Period","Tracker","Interactive")
 
-##### make observed/forecast maps ----
-mapObs<-do.call(rbind, mapList)
-  pastObs<-subset(mapObs,var=="Observed")
-  pastObs<-pastObs[pastObs$date >= Sys.Date()-7 & pastObs$date <= Sys.Date()-1, ]
-  pastObs$symbol<-ifelse(is.na(pastObs$Burn_hours),1,2)
-
-# observed map  
-p<-ggplot() +
-  geom_polygon(data = states, aes(x = long, y = lat, group = group), fill=NA, color="black", size=0.1)  +
-  geom_polygon(data = sw_psa_df, aes(x = long, y = lat, group = group), fill="gray94", color="grey", alpha=0.8)  + # get the state border back on top
-  #coord_fixed(xlim=c(out$meta$ll[1]-zoomLev, out$meta$ll[1]+zoomLev), ylim=c(out$meta$ll[2]-zoomLev, out$meta$ll[2]+zoomLev), ratio = 1) +
-  coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
-  geom_point(data = pastObs, aes(x = lon, y = lat, color=Burn_hours, shape=as.factor(symbol)), size=0.75)+
-  scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)")+
-  scale_shape_manual(values=c(4,19), guide="none")+
-  facet_wrap(.~date)+
-  theme_bw(base_size=12)+
-  theme(axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank(),
-        axis.title.y=element_blank(),
-        axis.text.y=element_blank(),
-        axis.ticks.y=element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())+
-  ggtitle(paste0("SWA Observed Burn Period: ",format(min(unique(pastObs$date)),"%m-%d-%Y"), " to ", format(max(unique(pastObs$date)),"%m-%d-%Y")))
-
-# p<-p + annotation_custom(grob = g, xmin = as.Date(paste0(dumYr,"-11-19")), xmax = Inf, ymin = 20, ymax = Inf)+
-#   labs(caption=paste0("Updated: ",format(Sys.time(), "%Y-%m-%d")," (current through ",format(currBurnHRS$date[max(which(is.na(currBurnHRS$Burn_hours)==TRUE))-1], "%m-%d"),")",
-#                       "\nBurn Period is total hours/day with RH<20%\n10-day moving avg(dashed line); 7-day NOAA NDFD forecast(green line)\nClimatology represents daily smoothed mean and range\n of values between 5th and 95th percentiles\nRAWS Data Source: famprod.nwcg.gov & cefa.dri.edu"))
-
-# write out file
-png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/Observed_BurnPeriod.png"), width = 11, height = 6, units = "in", res = 300L)
-#grid.newpage()
-print(p, newpage = FALSE)
-dev.off()
-
-# add logos
-# Call back the plot
-plot <- image_read(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/Observed_BurnPeriod.png"))
-# And bring in a logo
-logo_raw <- image_read("/home/crimmins/RProjects/BurnPeriodTracker/CLIMAS_UACOOP_SWCC_horiz.png") 
-logo <- image_resize(logo_raw, geometry_size_percent(width=85,height = 85))
-# Stack them on top of each other
-#final_plot <- image_append((c(plot, logo)), stack = TRUE)
-#final_plot <- image_mosaic((c(plot, logo)))
-final_plot <- image_composite(plot, logo, offset = "+1900+1400")
-# And overwrite the plot without a logo
-image_write(final_plot, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/Observed_BurnPeriod.png"))
-# ----
-
-# forecast map
-foreObs<-subset(mapObs,var=="Forecast")
-  foreObs<-foreObs[foreObs$date >= Sys.Date() & foreObs$date <= Sys.Date()+6, ]
-  foreObs$symbol<-ifelse(is.na(foreObs$Burn_hours),1,2)
-
-# observed map  
-p<-ggplot() +
-  geom_polygon(data = states, aes(x = long, y = lat, group = group), fill=NA, color="black", size=0.1)  +
-  geom_polygon(data = sw_psa_df, aes(x = long, y = lat, group = group), fill="gray94", color="grey", alpha=0.8)  + # get the state border back on top
-  #coord_fixed(xlim=c(out$meta$ll[1]-zoomLev, out$meta$ll[1]+zoomLev), ylim=c(out$meta$ll[2]-zoomLev, out$meta$ll[2]+zoomLev), ratio = 1) +
-  coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
-  geom_point(data = foreObs, aes(x = lon, y = lat, color=Burn_hours,shape=as.factor(symbol)), size=0.75)+
-  scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)")+
-  scale_shape_manual(values=c(4,19), guide="none")+
-  facet_wrap(.~date)+
-  theme_bw(base_size=12)+
-  theme(axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank(),
-        axis.title.y=element_blank(),
-        axis.text.y=element_blank(),
-        axis.ticks.y=element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())+
-  ggtitle(paste0("SWA Burn Period Forecast: ",format(min(unique(foreObs$date)),"%m-%d-%Y"), " to ", format(max(unique(foreObs$date)),"%m-%d-%Y")))
-
-# p<-p + annotation_custom(grob = g, xmin = as.Date(paste0(dumYr,"-11-19")), xmax = Inf, ymin = 20, ymax = Inf)+
-#   labs(caption=paste0("Updated: ",format(Sys.time(), "%Y-%m-%d")," (current through ",format(currBurnHRS$date[max(which(is.na(currBurnHRS$Burn_hours)==TRUE))-1], "%m-%d"),")",
-#                       "\nBurn Period is total hours/day with RH<20%\n10-day moving avg(dashed line); 7-day NOAA NDFD forecast(green line)\nClimatology represents daily smoothed mean and range\n of values between 5th and 95th percentiles\nRAWS Data Source: famprod.nwcg.gov & cefa.dri.edu"))
-
-# write out file
-png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/Forecast_BurnPeriod.png"), width = 11, height = 6, units = "in", res = 300L)
-#grid.newpage()
-print(p, newpage = FALSE)
-dev.off()
-
-# add logos
-# Call back the plot
-plot <- image_read(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/Forecast_BurnPeriod.png"))
-# And bring in a logo
-logo_raw <- image_read("/home/crimmins/RProjects/BurnPeriodTracker/CLIMAS_UACOOP_SWCC_horiz.png") 
-logo <- image_resize(logo_raw, geometry_size_percent(width=85,height = 85))
-# Stack them on top of each other
-#final_plot <- image_append((c(plot, logo)), stack = TRUE)
-#final_plot <- image_mosaic((c(plot, logo)))
-final_plot <- image_composite(plot, logo, offset = "+1900+1400")
-# And overwrite the plot without a logo
-image_write(final_plot, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/Forecast_BurnPeriod.png"))
-# ----
-
-#####
 
 # create Website with markdown ----
 render(paste0('/home/crimmins/RProjects/BurnPeriodTracker/BurnPeriod_Markdown.Rmd'), output_file='index.html',

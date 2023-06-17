@@ -49,7 +49,7 @@ for(i in 1:length(file_list)){
       burnHRS<-  tempRAWS %>%
         group_by(year, month, day) %>%
         summarize(n_hours = n(),
-                  rh_lt_20 = sum(`RelativeHumidity...` <= 20, na.rm = TRUE),
+                  rh_lt_20 = sum(as.numeric(as.character(`RelativeHumidity...`)) <= 20, na.rm = TRUE),
                   minRH = min(as.numeric(as.character(`RelativeHumidity...`)), na.rm = TRUE),
                   maxRH = max(as.numeric(as.character(`RelativeHumidity...`)), na.rm = TRUE))
       
