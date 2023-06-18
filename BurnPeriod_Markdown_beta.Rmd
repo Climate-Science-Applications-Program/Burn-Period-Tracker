@@ -78,11 +78,21 @@ leaflet(width="100%") %>%
 
 ### Past 7-days
 
-[![Link to image](https://cals.arizona.edu/climate/SWBurnPeriod/maps/Observed_BurnPeriod.png)](https://cals.arizona.edu/climate/SWBurnPeriod/maps/Observed_BurnPeriod.png)
+```{r, echo=FALSE, fig.align = "center", out.width= "100%"}
+knitr::include_graphics("./plots/maps/Observed_BurnPeriod.png")
+```
+<center>
+**[Click link to enlarge image](https://cals.arizona.edu/climate/SWBurnPeriod/maps/Observed_BurnPeriod.png)**
+</center>
 
 ### 7-day Forecast
 
-[![Link to image](https://cals.arizona.edu/climate/SWBurnPeriod/maps/Forecast_BurnPeriod.png)](https://cals.arizona.edu/climate/SWBurnPeriod/maps/Forecast_BurnPeriod.png)
+```{r, echo=FALSE, fig.align = "center", out.width= "100%"}
+knitr::include_graphics("./plots/maps/Forecast_BurnPeriod.png")
+```
+<center>
+**[Click link to enlarge image](https://cals.arizona.edu/climate/SWBurnPeriod/maps/Forecast_BurnPeriod.png)**
+</center>
 
 #
 
