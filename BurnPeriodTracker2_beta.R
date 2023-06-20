@@ -445,7 +445,7 @@ p<-p +
 theme(plot.caption = element_text(vjust = 42))
 
 # write out file
-png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Observed_BurnPeriod.png"), width = 11, height = 6, units = "in", res = 300L)
+png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Observed_BurnPeriod.png"), width = 10, height = 6.25, units = "in", res = 300L)
 #grid.newpage()
 print(p, newpage = FALSE)
 dev.off()
@@ -459,7 +459,7 @@ logo <- image_resize(logo_raw, geometry_size_percent(width=70,height = 70))
 # Stack them on top of each other
 #final_plot <- image_append((c(plot, logo)), stack = TRUE)
 #final_plot <- image_mosaic((c(plot, logo)))
-final_plot <- image_composite(plot, logo, offset = "+1060+1230")
+final_plot <- image_composite(plot, logo, offset = "+935+1300")
 # And overwrite the plot without a logo
 image_write(final_plot, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Observed_BurnPeriod.png"))
 # ----
@@ -496,7 +496,7 @@ p<-p +
   theme(plot.caption = element_text(vjust = 42))
 
 # write out file
-png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Forecast_BurnPeriod.png"), width = 11, height = 6, units = "in", res = 300L)
+png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Forecast_BurnPeriod.png"), width = 10, height = 6.25, units = "in", res = 300L)
 #grid.newpage()
 print(p, newpage = FALSE)
 dev.off()
@@ -510,7 +510,7 @@ logo <- image_resize(logo_raw, geometry_size_percent(width=70,height = 70))
 # Stack them on top of each other
 #final_plot <- image_append((c(plot, logo)), stack = TRUE)
 #final_plot <- image_mosaic((c(plot, logo)))
-final_plot <- image_composite(plot, logo, offset = "+1060+1230")
+final_plot <- image_composite(plot, logo, offset = "+935+1300")
 # And overwrite the plot without a logo
 image_write(final_plot, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Forecast_BurnPeriod.png"))
 # ----
