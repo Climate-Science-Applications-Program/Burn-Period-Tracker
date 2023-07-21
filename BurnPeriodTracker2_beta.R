@@ -425,7 +425,7 @@ p<-ggplot() +
   #coord_fixed(xlim=c(out$meta$ll[1]-zoomLev, out$meta$ll[1]+zoomLev), ylim=c(out$meta$ll[2]-zoomLev, out$meta$ll[2]+zoomLev), ratio = 1) +
   coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
   geom_point(data = pastObs, aes(x = lon, y = lat, color=Burn_hours, shape=as.factor(symbol)), size=0.75)+
-  scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)")+
+  scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)",limits=c(0,24))+
   scale_shape_manual(values=c(19,4), guide="none")+
   facet_wrap(.~date)+
   theme_bw(base_size=12)+
@@ -476,7 +476,7 @@ p<-ggplot() +
   #coord_fixed(xlim=c(out$meta$ll[1]-zoomLev, out$meta$ll[1]+zoomLev), ylim=c(out$meta$ll[2]-zoomLev, out$meta$ll[2]+zoomLev), ratio = 1) +
   coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
   geom_point(data = foreObs, aes(x = lon, y = lat, color=Burn_hours,shape=as.factor(symbol)), size=0.75)+
-  scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)")+
+  scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)",limits=c(0,24))+
   scale_shape_manual(values=c(19,4), guide="none")+
   facet_wrap(.~date)+
   theme_bw(base_size=12)+
@@ -529,7 +529,7 @@ for(i in 1:length(forecastDays)){
     #coord_fixed(xlim=c(out$meta$ll[1]-zoomLev, out$meta$ll[1]+zoomLev), ylim=c(out$meta$ll[2]-zoomLev, out$meta$ll[2]+zoomLev), ratio = 1) +
     coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
     geom_point(data = foreTemp, aes(x = lon, y = lat, color=Burn_hours,shape=as.factor(symbol)), size=1.5)+
-    scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)")+
+    scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)",limits=c(0,24))+
     scale_shape_manual(values=c(19,4), guide="none")+
     #facet_wrap(.~date)+
     theme_bw(base_size=12)+

@@ -38,7 +38,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # a single icon is declared
 
-fires<-"https://services3.arcgis.com/T4QMspbfLg3qTGWY/ArcGIS/rest/services/Current_WildlandFire_Perimeters/FeatureServer/0"
+# https://data-nifc.opendata.arcgis.com/datasets/nifc::wfigs-current-interagency-fire-perimeters/about
+#fires<-"https://services3.arcgis.com/T4QMspbfLg3qTGWY/ArcGIS/rest/services/Current_WildlandFire_Perimeters/FeatureServer/0"
+fires<-"https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters_Current/FeatureServer/0"
 
 pal<- colorNumeric((c('#deebf7','#ffeda0','#feb24c','#f03b20')), length(pageTable$`Latest Burn Period`), domain = c(0,24), reverse = FALSE)
 
