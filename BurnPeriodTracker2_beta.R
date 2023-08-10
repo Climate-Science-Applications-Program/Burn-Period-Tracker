@@ -206,7 +206,7 @@ for(i in 1:length(burnList)){
             legend.background = element_rect(fill=alpha('white', 0)))+
       #scale_y_discrete(name ="Burn period (hrs)", 
       #                 limits=c(0,4,8,12,16,20,24))+
-      scale_y_continuous(name ="Burn period (hrs)",breaks=c(0,4,8,12,16,20,24),limits=c(0, 24),expand = c(0,0))+
+      scale_y_continuous(name ="Burn period (hrs)",breaks=c(0,4,8,12,16,20,24),limits=c(0, 24),expand = c(0.01,0))+
       
       scale_x_date(labels = date_format("%b"), date_breaks = "1 month", expand = c(0,0))+
       ggtitle(plotTitle)
