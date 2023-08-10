@@ -577,6 +577,13 @@ write.csv(foreTable, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/ma
 write.csv(mapObs, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/fcstArchive/",format(Sys.time(), '%m-%d-%Y'),"_BurnPeriod_ObsForecast.txt"), row.names=FALSE)
 #####
 
+##### create observation csv for ArcGIS online ----
+swRAWScsv<-sw_rawsDF[,c(1:6)]
+swRAWScsv$date<-format((Sys.Date()-1),"%m/%d/%Y")
+write.csv(swRAWScsv, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/BurnPeriod_Current.csv"), row.names=FALSE)
+#####
+
+
 # create Website with markdown ----
 render(paste0('/home/crimmins/RProjects/BurnPeriodTracker/BurnPeriod_Markdown_beta.Rmd'), output_file='index.html',
        output_dir='/home/crimmins/RProjects/BurnPeriodTracker/plots/', clean=TRUE)
