@@ -329,7 +329,17 @@ for(i in 1:length(burnList)){
     
     # get station data for obs/forecast map
     #temp1<-currBurnHRS[currBurnHRS$date >= Sys.Date()-6 & currBurnHRS$date <= Sys.Date()-1,]
-    temp1<-currBurnHRS[((nrow(currBurnHRS)-9):nrow(currBurnHRS)),]
+    
+    # deal with limited data at New Year, added 1/3/24 ----
+    if((nrow(currBurnHRS)-9)<1){
+      stIdx<-1
+    }else{
+      stIdx<-(nrow(currBurnHRS)-9)
+    }
+    ######
+    
+    #temp1<-currBurnHRS[((nrow(currBurnHRS)-9):nrow(currBurnHRS)),]
+    temp1<-currBurnHRS[(stIdx:nrow(currBurnHRS)),]
     temp2<-fcst_bhrs[,c('date','Burn_hours_forecast','nhrs','var')]
     colnames(temp2)<-c('date','Burn_hours','n_hours','var')  
     # combine into df  
