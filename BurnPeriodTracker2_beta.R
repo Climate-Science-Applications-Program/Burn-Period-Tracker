@@ -121,32 +121,77 @@ for(i in 1:length(burnList)){
     colnames(currBurnHRS)[c(3,7)]<-c("Burn_hours","avg_10days")
     
     #####
-    # NDFD Burn Period forecast, see https://graphical.weather.gov/xml/rest.php
-    # url <- "http://forecast.weather.gov/MapClick.php?lat=32&lon=-112&FcstType=digitalDWML"
-    url <- paste0("http://forecast.weather.gov/MapClick.php?lat=",temp[1,c("LATITUDE")],"&lon=",temp[1,c("LONGITUDE")],"&FcstType=digitalDWML")
-    download.file(url=url,"/home/crimmins/RProjects/BurnPeriodTracker/url.txt" )
-    data <- XML::xmlParse("/home/crimmins/RProjects/BurnPeriodTracker/url.txt")
+    # # NDFD Burn Period forecast, see https://graphical.weather.gov/xml/rest.php
+    # # url <- "http://forecast.weather.gov/MapClick.php?lat=32&lon=-112&FcstType=digitalDWML"
+    # url <- paste0("http://forecast.weather.gov/MapClick.php?lat=",temp[1,c("LATITUDE")],"&lon=",temp[1,c("LONGITUDE")],"&FcstType=digitalDWML")
+    # #url <- paste0("https://graphical.weather.gov/xml/sample_products/browser_interface/ndfdXMLclient.php?lat=",temp[1,c("LATITUDE")],"&lon=",temp[1,c("LONGITUDE")],"&product=time-series")
+    # #url<-paste0("https://graphical.weather.gov/xml/sample_products/browser_interface/ndfdXMLclient.php?whichClient=NDFDgen&lat=32.66&lon=-114.64&product=time-series&XMLformat=DWML&rh=rh")
+    # 
+    # download.file(url=url,"/home/crimmins/RProjects/BurnPeriodTracker/url.txt" )
+    # data <- XML::xmlParse("/home/crimmins/RProjects/BurnPeriodTracker/url.txt")
+    # 
+    # xml_data <- XML::xmlToList(data)
+    # # get location info
+    # location <- as.list(xml_data[["data"]][["location"]][["point"]])
+    # # get times
+    # start_time <- as.data.frame(as.character(unlist(xml_data[["data"]][["time-layout"]][
+    #   names(xml_data[["data"]][["time-layout"]]) == "start-valid-time"])))
+    # colnames(start_time)<-"date_time"
+    # start_time$date_time<-as.character(start_time$date_time)
+    # start_time$date_time<-lubridate::ymd_hms(substring(start_time$date_time, 1,19))
+    # start_time$doy<-as.numeric(format(start_time$date_time,"%j"))
+    # 
+    # # get RH --- doesn't work right, cuts off and mismatches RH vals with time
+    # rhum<-as.data.frame(as.numeric(unlist(xml_data[["data"]][["parameters"]][["humidity"]])))
+    # colnames(rhum)<-"rh_perc"
+    # rhum<-as.data.frame(rhum[1:nrow(start_time),1])  
+    # colnames(rhum)<-"rh_perc"
+    # # add in times
+    # rhum<-cbind.data.frame(start_time,rhum)  
+    # rhum$bhour<-ifelse(rhum$rh_perc<=20, 1, 0)
+    # 
+    # fcst_bhrs<- rhum %>% group_by(doy) %>% 
+    #   summarise(Burn_hours_forecast=sum(bhour),
+    #             nhrs =n())
+    # fcst_bhrs$date<-as.Date(paste0(fcst_bhrs$doy,"-",format(Sys.Date(),"%Y")),format="%j-%Y")
+    # # deal with days with missing hours
+    # ##fcst_bhrs<-subset(fcst_bhrs, nhrs>=22)
+    # # set missing days to NA
+    # fcst_bhrs$Burn_hours_forecast<-ifelse(fcst_bhrs$nhrs<22,NA,fcst_bhrs$Burn_hours_forecast)
+    #####
     
-    xml_data <- XML::xmlToList(data)
-    # get location info
-    location <- as.list(xml_data[["data"]][["location"]][["point"]])
-    # get times
-    start_time <- as.data.frame(as.character(unlist(xml_data[["data"]][["time-layout"]][
-      names(xml_data[["data"]][["time-layout"]]) == "start-valid-time"])))
-    colnames(start_time)<-"date_time"
-    start_time$date_time<-as.character(start_time$date_time)
-    start_time$date_time<-lubridate::ymd_hms(substring(start_time$date_time, 1,19))
-    start_time$doy<-as.numeric(format(start_time$date_time,"%j"))
+    ##### NEW NOAA API webservices call ----
+    # with try/catch on errors for initial query
+    q1 <- tryCatch(jsonlite::fromJSON(paste0("https://api.weather.gov/points/",temp[1,c("LATITUDE")],",",temp[1,c("LONGITUDE")])),
+                    error = function(e) {return(NA)})
+    while(all(is.na(q1))) {
+      Sys.sleep(7) #Change as per requirement. 
+      q1 <- tryCatch(jsonlite::fromJSON(paste0("https://api.weather.gov/points/",temp[1,c("LATITUDE")],",",temp[1,c("LONGITUDE")])),
+                      error = function(e) {return(NA)})
+      print("Trying NOAA API query again")
+    }
+    # error catch on forecast query    
+    qHrly <- tryCatch(jsonlite::fromJSON(q1$properties$forecastHourly),
+                   error = function(e) {return(NA)})
+    while(all(is.na(qHrly))) {
+      Sys.sleep(7) #Change as per requirement. 
+      qHrly <- tryCatch(jsonlite::fromJSON(q1$properties$forecastHourly),
+                     error = function(e) {return(NA)})
+      print("Trying forecast download again")
+    }
     
-    # get RH
-    rhum<-as.data.frame(as.numeric(unlist(xml_data[["data"]][["parameters"]][["humidity"]])))
-    colnames(rhum)<-"rh_perc"
-    rhum<-as.data.frame(rhum[1:nrow(start_time),1])  
-    colnames(rhum)<-"rh_perc"
-    # add in times
-    rhum<-cbind.data.frame(start_time,rhum)  
-    rhum$bhour<-ifelse(rhum$rh_perc<=20, 1, 0)
+    # extract forecast data
+    forecast<-qHrly$properties$periods
+    # wrangle date/time field
+    #start_time$date_time<-as.character(start_time$date_time)
+    forecast$startTime2<-lubridate::ymd_hms(substring(forecast$startTime, 1,19), tz="America/Phoenix")
+      #forecast$startTime<-lubridate::with_tz(forecast$startTime, "America/Phoenix")
+    forecast$doy<-as.numeric(format(forecast$startTime2,"%j"))
+    # extract rhum data
+    rhum<-forecast[,c("doy","startTime","relativeHumidity")]
+    rhum$bhour<-ifelse(rhum$relativeHumidity$value<=20, 1, 0)
     
+    # summarize to day totals
     fcst_bhrs<- rhum %>% group_by(doy) %>% 
       summarise(Burn_hours_forecast=sum(bhour),
                 nhrs =n())
@@ -155,8 +200,6 @@ for(i in 1:length(burnList)){
     #fcst_bhrs<-subset(fcst_bhrs, nhrs>=22)
     # set missing days to NA
     fcst_bhrs$Burn_hours_forecast<-ifelse(fcst_bhrs$nhrs<22,NA,fcst_bhrs$Burn_hours_forecast)
-    
-    
     #####
     
     #####
