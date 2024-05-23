@@ -1,0 +1,114 @@
+---
+title: "`r pageTitle`"
+author: ''
+date: "`r paste0('Updated:',Sys.Date())`"
+output: html_document
+---
+
+<head>
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-1614595-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-1614595-1');
+</script>
+
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+</head> 
+
+
+This page provides access to an experimental fire weather monitoring product called the Burn Period Tracker. Burn period is defined as the number of hours per day where the hourly average relative humidity is less than or equal to 20% and is calculated at [Remote Automated Weather Stations](https://www.nifc.gov/about-us/what-is-nifc/remote-automatic-weather-stations) with real-time data and several years of historical data. Values range from 0 to 24 hours per day with higher values associated with increased fire danger. 
+
+Click on markers on the map below to access Burn Period Tracker plots and recent observations at available RAWS sites (Click on marker to bring up plot and observation links; click again to access either product). Active and recent fires are shown in red polygons on the map. Burn Tracker Plots and recent observations are also available through the table below the map. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## {.tabset .tabset-fade}
+
+### RAWS Sites 
+```{r,results='asis', echo=FALSE}
+
+# a single icon is declared
+
+# https://data-nifc.opendata.arcgis.com/datasets/nifc::wfigs-current-interagency-fire-perimeters/about
+#fires<-"https://services3.arcgis.com/T4QMspbfLg3qTGWY/ArcGIS/rest/services/Current_WildlandFire_Perimeters/FeatureServer/0"
+fires<-"https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters_Current/FeatureServer/0"
+
+pal<- colorNumeric((c('#deebf7','#ffeda0','#feb24c','#f03b20')), length(pageTable$`Latest Burn Period`), domain = c(0,24), reverse = FALSE)
+
+leaflet(width="100%") %>%
+  #setView(-109, 34.6, zoom = 6.4) %>%
+  addProviderTiles(providers$Esri.WorldTopoMap) %>%
+  # options = providerTileOptions(minZoom = 6.25)
+  #addMarkers(lng=stationThin$lon, lat=stationThin$lat, popup=stationThin$names,
+  #           labelOptions = labelOptions(noHide = T))
+  addCircleMarkers(pageTable$Longitude, pageTable$Latitude,
+                    popup = lapply(stnLabs, htmltools::HTML),
+                   label = lapply(stnLabs, htmltools::HTML),
+                   radius = 5.5,
+                   color = "black",
+                   fillOpacity = 0.9,
+                   fillColor =  pal(pageTable$`Latest Burn Period`))
+    # popupProperty = JS(paste0(
+    # "function(feature) {",
+    # "  return L.Util.template(",
+    # "    \"<h3>{poly_IncidentName}</h3><hr />",
+    # "      <p> {GISAcres} acres, Start: {CreateDate}.</p>",
+    # "    \",",
+    # "    feature.properties",
+    # "  );",
+    # "}"
+    # )))
+    
+
+```  
+
+#
+
+------
+
+## {.tabset .tabset-fade}
+
+### Plots 
+```{r,results='asis', echo=FALSE}
+datatable(pageTable, class = 'cell-border compact stripe', escape = FALSE, rownames = FALSE,
+          options = list(pageLength = 10, info = FALSE, lengthMenu = list(c(-1,10,50), c("All","10","50"))),
+          filter = list(position = 'top', clear = TRUE))
+```
+
+#
+
+<p>&nbsp;</p>
+
+------
+
+<div align="center">
+  
+  ![](CLIMAS_UACOOP_SWCC_horiz.png){width=40%}
+  
+</div>
+
+------
+
+<div align="center">
+  <em>[Climate Science Applications Program - University of Arizona Cooperative Extension](http://cals.arizona.edu/climate/)</em>
+  
+  <p>&nbsp;</p>
+  
+  [![Latest](GitHub-Mark-32px.png)](https://github.com/Climate-Science-Applications-Program/Burn-Period-Tracker)
+<em>[https://github.com/Climate-Science-Applications-Program/Burn-Period-Tracker](https://github.com/Climate-Science-Applications-Program/Burn-Period-Tracker)</em>
+
+</div>
+
+<div align="center">
+  <h6>
+  Last Updated: "`r format(Sys.time(), '%m-%d-%Y')`"© 2024 The Arizona Board of Regents. All contents copyrighted. All rights reserved.</h6>
+</div>
