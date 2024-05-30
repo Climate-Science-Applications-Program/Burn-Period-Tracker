@@ -60,7 +60,8 @@ mapList<-list()
 
 # set years to loop through 
 
-yrs<-c(2018:2019)
+# WIMS available back to 2014
+yrs<-c(2014:2014)
 
 for(l in 1:length(yrs)){
   arcYR<-yrs[l]
