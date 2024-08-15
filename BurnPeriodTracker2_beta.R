@@ -78,14 +78,18 @@ for(i in 1:length(burnList)){
   # pad NAs
   dayQuantiles<-tidyr::fill(dayQuantiles, rollAvg, .direction = "downup")
   
+  #tictoc::tic()
   # get recent RAWS data
-  url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-",format(Sys.time(), "%Y"),"&end=31-Dec-",format(Sys.time(), "%Y"),"&time=&sort=&ndays=")
+  #url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-",format(Sys.time(), "%Y"),"&end=31-Dec-",format(Sys.time(), "%Y"),"&time=&sort=&ndays=")
+  # new WIMS link
+  url<-paste0("https://famprod.nwcg.gov/prod-wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-",format(Sys.time(), "%Y"),"&end=31-Dec-",format(Sys.time(), "%Y"),"&time=&sort=&ndays=")
   # past year
   #url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-","2021","&end=31-Dec-","2021","&time=&sort=&ndays=")
   tryCatch({
   xData <- getURL(url)
   xmldoc <- xmlParse(xData)
   currYear <- xmlToDataFrame(xData)
+  #tictoc::toc()
   # if no data, skip
   if(nrow(currYear)!=0){
     # correct date field
