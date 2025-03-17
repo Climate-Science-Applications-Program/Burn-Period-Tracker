@@ -1,6 +1,5 @@
 # Working version of Burn Period Tracker adapted from BurnPeriodTracker2_beta.R
 # MAC 03/11/25; adapted for new VM and R>4.0
-# converted to FEMS API for RAWS data 3/13/25
 # Burn Period Tracker with added stations and updated climatology method
 # adapted from BurnPeriod_tracker_wFcst.R
 # MAC 02/28/23, V2.0
@@ -26,46 +25,22 @@ library(scales)
 library(magick)
 library(RColorBrewer)
 library(sf)
-library(lubridate)
 
 # DEAL WITH PANDOC ERROR
 #Sys.setenv(RSTUDIO_PANDOC="/usr/lib/rstudio-server/bin/pandoc")
 Sys.setenv(RSTUDIO_PANDOC="/usr/bin/pandoc")
 
-##### Functions -----
-download_raws <- function(station_id, start_date, end_date) {
-  # Base URL for the API
-  base_url <- "https://fems.fs2c.usda.gov/api/climatology/download-weather"
-  
-  # Construct query parameters
-  query_params <- list(
-    stationIds = station_id,
-    startDate = paste0(start_date, "T23:30:00Z"),
-    endDate = paste0(end_date, "T23:29:59Z"),
-    dataset = "all",
-    dataFormat = "csv",
-    dataIncrement = "hourly",
-    stationtypes = "RAWS(SATNFDRS)"
-  )
-  
-  # Construct the full URL
-  url <- paste0(base_url, "?", 
-                paste(names(query_params), query_params, sep = "=", collapse = "&"))
-  
-  # Download the CSV data
-  temp_file <- tempfile(fileext = ".csv")
-  download.file(url, temp_file, mode = "wb")
-  
-  # Read the CSV into a dataframe
-  weather_data <- read.csv(temp_file, stringsAsFactors = FALSE)
-  
-  # Return the dataframe
-  return(weather_data)
-}
-#####
-
 # ggplot inset data
 states <- map_data("state")
+
+##### OLD CODE 
+# load spatial data
+# psa zones
+# psa<-rgdal::readOGR(dsn="/home/crimmins/RProjects/BurnPeriodTracker/shapes", layer="National_PSA_Current")
+# sw_psa<-subset(psa, GACCName=="Southwest Coordination Center")
+# # get psa centroids for factor order
+# sw_psaDF<- cbind.data.frame(sw_psa, rgeos::gCentroid(sw_psa,byid=TRUE))
+#####
 
 ###### New code with SF
 # Read the shapefile using sf
@@ -98,7 +73,7 @@ mapList<-list()
 # which(stations=="BOSQUE")
 
 #####
-# loop through list and make plots   
+# loop through list and make plots
 for(i in 1:length(burnList)){
   # develop daily climo for station in list
   temp<-burnList[[i]]
@@ -120,46 +95,33 @@ for(i in 1:length(burnList)){
   # pad NAs
   dayQuantiles<-tidyr::fill(dayQuantiles, rollAvg, .direction = "downup")
   
-  ##### get recent RAWS data
+  #tictoc::tic()
+  # get recent RAWS data
+  #url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-",format(Sys.time(), "%Y"),"&end=31-Dec-",format(Sys.time(), "%Y"),"&time=&sort=&ndays=")
+  # new WIMS link
+  url<-paste0("https://famprod.nwcg.gov/prod-wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-",format(Sys.time(), "%Y"),"&end=31-Dec-",format(Sys.time(), "%Y"),"&time=&sort=&ndays=")
+  # past year
+  #url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-","2021","&end=31-Dec-","2021","&time=&sort=&ndays=")
   tryCatch({
-  currYear<-download_raws(temp$StationNum[1], (as.Date(format(Sys.Date(), "%Y-01-01")) - 1), format(Sys.Date(), "%Y-12-31"))
-  # append station info
-  currYear<-cbind.data.frame(temp$StationNum[1],temp$STA_NAME[1], temp$LONGITUDE[1],temp$LATITUDE[1],currYear)
-  # correct date field
-  dates <- data.frame(datetime = currYear$DateTime) %>%
-    mutate(
-      datetime = str_remove(datetime, "\\.\\d+Z$"),   # Remove milliseconds and 'Z'
-      datetime_utc = ymd_hms(datetime, tz = "UTC"),  # Convert to POSIXct (UTC)
-      datetime_mst = with_tz(datetime_utc, tzone = "America/Phoenix"),  # Convert to MST
-      date = as.Date(format(datetime_mst, "%Y-%m-%d")),  # Corrected date extraction
-      time = format(datetime_mst, "%H:%M:%S"),  # Extract time
-      year = format(datetime_mst, "%Y"),  # Extract year
-      day_of_year = yday(date)
-    )
-  # create dataframe
-  currYear<-cbind.data.frame(dates,currYear)
-  # subset to current year
-  currYear<-subset(currYear, year==as.numeric(format(Sys.Date(), "%Y")))
-  # thin dataframe and rename columns
-  currYear<-currYear[,c("StationId","temp$STA_NAME[1]","temp$LONGITUDE[1]","temp$LATITUDE[1]",
-                          "date","time","day_of_year","year","ObservationType","RelativeHumidity...")]
-  colnames(currYear)<-c("sta_id","sta_nm","latitude","longitude","obs_dt","obs_tm","doy","year","obs_type","rh")
-  currYear$date<-currYear$obs_dt
-  # get current Year numeric
-  yr<-((format(currYear$date[1],"%Y")))
-  #####
-
+  xData <- getURL(url)
+  xmldoc <- xmlParse(xData)
+  currYear <- xmlToDataFrame(xData)
+  #tictoc::toc()
   # if no data, skip
   if(nrow(currYear)!=0){
-
+    # correct date field
+    currYear$date<-as.Date(currYear$obs_dt,format="%m/%d/%Y")
+    currYear$doy<-format(currYear$date,"%j")
+    # get current Year numeric
+    yr<-((format(currYear$date[1],"%Y")))
+    
     # current year burn hours
     currBurnHRS<-  currYear %>%
       group_by(date) %>%
       summarize(n_hours = n(),
                 rh_lt_20 = sum(as.numeric(as.character(rh)) <= 20, na.rm = TRUE),
-                minRH = min(as.numeric(as.character(rh)), na.rm = TRUE),
-                maxRH = max(as.numeric(as.character(rh)), na.rm = TRUE),
-                obType =first(obs_type))
+                minRH = min(as.numeric(as.character(rh_min)), na.rm = TRUE),
+                maxRH = max(as.numeric(as.character(rh_max)), na.rm = TRUE))
     currBurnHRS$doy<-format(currBurnHRS$date,"%j")
     currBurnHRS$doy<-as.numeric(currBurnHRS$doy)
     # set missing days to NA
@@ -177,22 +139,94 @@ for(i in 1:length(burnList)){
     # better names for Plotly labels
     colnames(dayQuantiles)[c(2,4,9)]<-c("q5th_percentile","q90th_percentile","mean")
       dayQuantiles$mean<-round(dayQuantiles$mean,1)
-    colnames(currBurnHRS)[c(3,8)]<-c("Burn_hours","avg_10days")
+    colnames(currBurnHRS)[c(3,7)]<-c("Burn_hours","avg_10days")
     
-    ##### extract forecast data
-    fcst_bhrs<-subset(currBurnHRS, obType=="F")
-    fcst_bhrs$doy<-as.numeric(format(fcst_bhrs$date,"%j"))
-    fcst_bhrs<-fcst_bhrs[,c("doy","Burn_hours", "n_hours","date")]
-    colnames(fcst_bhrs)<-c("doy","Burn_hours_forecast","nhrs","date")
+    #####
+    # # NDFD Burn Period forecast, see https://graphical.weather.gov/xml/rest.php
+    # # url <- "http://forecast.weather.gov/MapClick.php?lat=32&lon=-112&FcstType=digitalDWML"
+    # url <- paste0("http://forecast.weather.gov/MapClick.php?lat=",temp[1,c("LATITUDE")],"&lon=",temp[1,c("LONGITUDE")],"&FcstType=digitalDWML")
+    # #url <- paste0("https://graphical.weather.gov/xml/sample_products/browser_interface/ndfdXMLclient.php?lat=",temp[1,c("LATITUDE")],"&lon=",temp[1,c("LONGITUDE")],"&product=time-series")
+    # #url<-paste0("https://graphical.weather.gov/xml/sample_products/browser_interface/ndfdXMLclient.php?whichClient=NDFDgen&lat=32.66&lon=-114.64&product=time-series&XMLformat=DWML&rh=rh")
+    # 
+    # download.file(url=url,"/home/crimmins/RProjects/BurnPeriodTracker/url.txt" )
+    # data <- XML::xmlParse("/home/crimmins/RProjects/BurnPeriodTracker/url.txt")
+    # 
+    # xml_data <- XML::xmlToList(data)
+    # # get location info
+    # location <- as.list(xml_data[["data"]][["location"]][["point"]])
+    # # get times
+    # start_time <- as.data.frame(as.character(unlist(xml_data[["data"]][["time-layout"]][
+    #   names(xml_data[["data"]][["time-layout"]]) == "start-valid-time"])))
+    # colnames(start_time)<-"date_time"
+    # start_time$date_time<-as.character(start_time$date_time)
+    # start_time$date_time<-lubridate::ymd_hms(substring(start_time$date_time, 1,19))
+    # start_time$doy<-as.numeric(format(start_time$date_time,"%j"))
+    # 
+    # # get RH --- doesn't work right, cuts off and mismatches RH vals with time
+    # rhum<-as.data.frame(as.numeric(unlist(xml_data[["data"]][["parameters"]][["humidity"]])))
+    # colnames(rhum)<-"rh_perc"
+    # rhum<-as.data.frame(rhum[1:nrow(start_time),1])  
+    # colnames(rhum)<-"rh_perc"
+    # # add in times
+    # rhum<-cbind.data.frame(start_time,rhum)  
+    # rhum$bhour<-ifelse(rhum$rh_perc<=20, 1, 0)
+    # 
+    # fcst_bhrs<- rhum %>% group_by(doy) %>% 
+    #   summarise(Burn_hours_forecast=sum(bhour),
+    #             nhrs =n())
+    # fcst_bhrs$date<-as.Date(paste0(fcst_bhrs$doy,"-",format(Sys.Date(),"%Y")),format="%j-%Y")
+    # # deal with days with missing hours
+    # ##fcst_bhrs<-subset(fcst_bhrs, nhrs>=22)
+    # # set missing days to NA
+    # fcst_bhrs$Burn_hours_forecast<-ifelse(fcst_bhrs$nhrs<22,NA,fcst_bhrs$Burn_hours_forecast)
+    #####
+    
+    ##### NEW NOAA API webservices call ----
+    # with try/catch on errors for initial query
+    q1 <- tryCatch(jsonlite::fromJSON(paste0("https://api.weather.gov/points/",temp[1,c("LATITUDE")],",",temp[1,c("LONGITUDE")])),
+                    error = function(e) {return(NA)})
+    while(all(is.na(q1))) {
+      Sys.sleep(7) #Change as per requirement. 
+      q1 <- tryCatch(jsonlite::fromJSON(paste0("https://api.weather.gov/points/",temp[1,c("LATITUDE")],",",temp[1,c("LONGITUDE")])),
+                      error = function(e) {return(NA)})
+      print("Trying NOAA API query again")
+    }
+    # error catch on forecast query    
+    qHrly <- tryCatch(jsonlite::fromJSON(q1$properties$forecastHourly),
+                   error = function(e) {return(NA)})
+    while(all(is.na(qHrly))) {
+      Sys.sleep(7) #Change as per requirement. 
+      qHrly <- tryCatch(jsonlite::fromJSON(q1$properties$forecastHourly),
+                     error = function(e) {return(NA)})
+      print("Trying forecast download again")
+    }
+    
+    # extract forecast data
+    forecast<-qHrly$properties$periods
+    # wrangle date/time field
+    #start_time$date_time<-as.character(start_time$date_time)
+    forecast$startTime2<-lubridate::ymd_hms(substring(forecast$startTime, 1,19), tz="America/Phoenix")
+      #forecast$startTime<-lubridate::with_tz(forecast$startTime, "America/Phoenix")
+    forecast$doy<-as.numeric(format(forecast$startTime2,"%j"))
+    # extract rhum data
+    rhum<-forecast[,c("doy","startTime","relativeHumidity")]
+    rhum$bhour<-ifelse(rhum$relativeHumidity$value<=20, 1, 0)
+    
+    # summarize to day totals
+    fcst_bhrs<- rhum %>% group_by(doy) %>% 
+      summarise(Burn_hours_forecast=sum(bhour),
+                nhrs =n())
+    fcst_bhrs$date<-as.Date(paste0(fcst_bhrs$doy,"-",format(Sys.Date(),"%Y")),format="%j-%Y")
+    # deal with days with missing hours
+    #fcst_bhrs<-subset(fcst_bhrs, nhrs>=22)
+    # set missing days to NA
     fcst_bhrs$Burn_hours_forecast<-ifelse(fcst_bhrs$nhrs<22,NA,fcst_bhrs$Burn_hours_forecast)
-    fcst_bhrs$var<-"Forecast"
     #####
     
     #####
     # plot with legend data
-    tempBurnHrs<-subset(currBurnHRS, obType=="O")
-     tempBurnHrs$var<-"Observed"
-     tempBurnHrs<-tempBurnHrs[,c("date","Burn_hours","var")]
+    currBurnHRS$var<-"Observed"
+     tempBurnHrs<-currBurnHRS[,c("date","Burn_hours","var")]
      colnames(tempBurnHrs)<-c("date","hours","var")
     fcst_bhrs$var<-"Forecast"
      tempFcstHrs<-fcst_bhrs[,c("date","Burn_hours_forecast","var")]
@@ -201,6 +235,8 @@ for(i in 1:length(burnList)){
      tempDay10avg$var<-"10-day Avg"
      colnames(tempDay10avg)<-c("date","hours","var")
     plotData<-rbind.data.frame(tempBurnHrs,tempFcstHrs,tempDay10avg)
+    
+
     #####
     
     # make the plot
@@ -285,7 +321,8 @@ for(i in 1:length(burnList)){
     p<-p + annotation_custom(grob = g, xmin = as.Date(paste0(dumYr,"-11-19")), xmax = Inf, ymin = 20, ymax = Inf)+
       labs(caption=paste0("Updated: ",format(Sys.time(), "%Y-%m-%d")," (current through ",format(currBurnHRS$date[max(which(is.na(currBurnHRS$Burn_hours)==TRUE))-1], "%m-%d"),")",
                           "\nBurn Period is total hours/day with RH<20%\n10-day moving avg(dashed line); 7-day NOAA NDFD forecast(green line)\nClimatology represents daily smoothed mean and range\n of values between 5th and 95th percentiles\nRAWS Data Source: famprod.nwcg.gov & cefa.dri.edu"))
-  
+    
+    
     # write out file
     png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/",temp$STA_NAME[1],"_BurnPeriod.png"), width = 12, height = 6, units = "in", res = 300L)
     #grid.newpage()
@@ -360,17 +397,15 @@ for(i in 1:length(burnList)){
     #temp1<-currBurnHRS[currBurnHRS$date >= Sys.Date()-6 & currBurnHRS$date <= Sys.Date()-1,]
     
     # deal with limited data at New Year, added 1/3/24 ----
-    tempDF<-subset(currBurnHRS, obType=="O")
-    tempDF$var<-"Observed"
-    if((nrow(tempDF)-9)<1){
+    if((nrow(currBurnHRS)-9)<1){
       stIdx<-1
     }else{
-      stIdx<-(nrow(tempDF)-9)
+      stIdx<-(nrow(currBurnHRS)-9)
     }
     ######
     
     #temp1<-currBurnHRS[((nrow(currBurnHRS)-9):nrow(currBurnHRS)),]
-    temp1<-tempDF[(stIdx:nrow(tempDF)),]
+    temp1<-currBurnHRS[(stIdx:nrow(currBurnHRS)),]
     temp2<-fcst_bhrs[,c('date','Burn_hours_forecast','nhrs','var')]
     colnames(temp2)<-c('date','Burn_hours','n_hours','var')  
     # combine into df  
@@ -407,8 +442,7 @@ library(DT)
 library(leaflet.esri)
 
 # DEAL WITH PANDOC ERROR
-#Sys.setenv(RSTUDIO_PANDOC="/usr/lib/rstudio-server/bin/pandoc")
-Sys.setenv(RSTUDIO_PANDOC="/usr/bin/pandoc")
+Sys.setenv(RSTUDIO_PANDOC="/usr/lib/rstudio-server/bin/pandoc")
 
 # station metdata
 sw_rawsDF<-do.call(rbind, pageData)
@@ -463,11 +497,9 @@ mapObs<-do.call(rbind, mapList)
 # observed map  
 p<-ggplot() +
   geom_polygon(data = states, aes(x = long, y = lat, group = group), fill=NA, color="black", size=0.1)  +
-  #geom_polygon(data = sw_psa_df, aes(x = long, y = lat, group = group), fill="gray94", color="grey", alpha=0.8)  + # get the state border back on top
-  geom_sf(data = sw_psa, fill = "lightgrey", color = "grey", alpha=0.8)+
+  geom_polygon(data = sw_psa_df, aes(x = long, y = lat, group = group), fill="gray94", color="grey", alpha=0.8)  + # get the state border back on top
   #coord_fixed(xlim=c(out$meta$ll[1]-zoomLev, out$meta$ll[1]+zoomLev), ylim=c(out$meta$ll[2]-zoomLev, out$meta$ll[2]+zoomLev), ratio = 1) +
-  #coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
-  coord_sf(xlim = c(-115, -102.75), ylim = c(31, 37.5), expand = FALSE) +
+  coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
   geom_point(data = pastObs, aes(x = lon, y = lat, color=Burn_hours, shape=as.factor(symbol)), size=0.75)+
   scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)",limits=c(0,24))+
   scale_shape_manual(values=c(19,4), guide="none")+
@@ -516,11 +548,9 @@ foreObs<-subset(mapObs,var=="Forecast")
 # forecast map  
 p<-ggplot() +
   geom_polygon(data = states, aes(x = long, y = lat, group = group), fill=NA, color="black", size=0.1)  +
-  #geom_polygon(data = sw_psa_df, aes(x = long, y = lat, group = group), fill="gray94", color="grey", alpha=0.8)  + # get the state border back on top
-  geom_sf(data = sw_psa, fill = "lightgrey", color = "grey", alpha=0.8)+
+  geom_polygon(data = sw_psa_df, aes(x = long, y = lat, group = group), fill="gray94", color="grey", alpha=0.8)  + # get the state border back on top
   #coord_fixed(xlim=c(out$meta$ll[1]-zoomLev, out$meta$ll[1]+zoomLev), ylim=c(out$meta$ll[2]-zoomLev, out$meta$ll[2]+zoomLev), ratio = 1) +
-  #coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
-  coord_sf(xlim = c(-115, -102.75), ylim = c(31, 37.5), expand = FALSE) +
+  coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
   geom_point(data = foreObs, aes(x = lon, y = lat, color=Burn_hours,shape=as.factor(symbol)), size=0.75)+
   scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)",limits=c(0,24))+
   scale_shape_manual(values=c(19,4), guide="none")+
@@ -571,11 +601,9 @@ for(i in 1:length(forecastDays)){
   # forecast map  
   p<-ggplot() +
     geom_polygon(data = states, aes(x = long, y = lat, group = group), fill=NA, color="black", size=0.1)  +
-    #geom_polygon(data = sw_psa_df, aes(x = long, y = lat, group = group), fill="gray94", color="grey", alpha=0.8)  + # get the state border back on top
-    geom_sf(data = sw_psa, fill = "lightgrey", color = "grey", alpha=0.8)+
+    geom_polygon(data = sw_psa_df, aes(x = long, y = lat, group = group), fill="gray94", color="grey", alpha=0.8)  + # get the state border back on top
     #coord_fixed(xlim=c(out$meta$ll[1]-zoomLev, out$meta$ll[1]+zoomLev), ylim=c(out$meta$ll[2]-zoomLev, out$meta$ll[2]+zoomLev), ratio = 1) +
-    #coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
-    coord_sf(xlim = c(-115, -102.75), ylim = c(31, 37.5), expand = FALSE) +
+    coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
     geom_point(data = foreTemp, aes(x = lon, y = lat, color=Burn_hours,shape=as.factor(symbol)), size=1.5)+
     scale_color_gradientn(colors = c('#74add1','#fee090','#f46d43','#a50026'),name="Burn Period (hrs)",limits=c(0,24))+
     scale_shape_manual(values=c(19,4), guide="none")+
@@ -631,16 +659,17 @@ swRAWScsv$date<-format((Sys.Date()-1),"%m/%d/%Y")
 write.csv(swRAWScsv, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/BurnPeriod_Current.csv"), row.names=FALSE)
 #####
 
+
 # create Website with markdown ----
-render(paste0('/home/crimmins/RProjects/BurnPeriodTracker/BurnPeriod_Markdown_working.Rmd'), output_file='index.html',
+render(paste0('/home/crimmins/RProjects/BurnPeriodTracker/BurnPeriod_Markdown_beta.Rmd'), output_file='index.html',
        output_dir='/home/crimmins/RProjects/BurnPeriodTracker/plots/', clean=TRUE)
 
 # #####
 
-# source('/home/crimmins/RProjects/BurnPeriodTracker/pushNotify.R')
-# 
-# if(length(errorList)!=0){
-#   source('/home/crimmins/RProjects/BurnPeriodTracker/pushNotifyError.R')
-# }
+source('/home/crimmins/RProjects/BurnPeriodTracker/pushNotify.R')
+
+if(length(errorList)!=0){
+  source('/home/crimmins/RProjects/BurnPeriodTracker/pushNotifyError.R')
+}
 
 

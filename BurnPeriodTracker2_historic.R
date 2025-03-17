@@ -1,3 +1,5 @@
+# Working version of Burn Period Tracker Historic adapted from BurnPeriodTracker2_beta.R
+# MAC 03/11/25; adapted for new VM and R>4.0
 # BP TRACKER ARCHIVE VERSION ---- creates historic plots ----
 # adapted from BurnPeriodTracker2_beta.R
 #
@@ -14,7 +16,7 @@ print(Sys.Date())
 
 ptm <- proc.time()
 
-library(rgdal)
+#library(rgdal)
 library(tidyr)
 library(dplyr)
 library(stringr)
@@ -24,21 +26,36 @@ library(ggplot2)
 library(scales)
 library(magick)
 library(RColorBrewer)
+library(sf)
 
 # DEAL WITH PANDOC ERROR
-Sys.setenv(RSTUDIO_PANDOC="/usr/lib/rstudio-server/bin/pandoc")
+#Sys.setenv(RSTUDIO_PANDOC="/usr/lib/rstudio-server/bin/pandoc")
+Sys.setenv(RSTUDIO_PANDOC="/usr/bin/pandoc")
 
 # ggplot inset data
 states <- map_data("state")
 
+##### OLD CODE
+# # load spatial data
+# # psa zones
+# psa<-rgdal::readOGR(dsn="/home/crimmins/RProjects/BurnPeriodTracker/shapes", layer="National_PSA_Current")
+# sw_psa<-subset(psa, GACCName=="Southwest Coordination Center")
+# # get psa centroids for factor order
+# sw_psaDF<- cbind.data.frame(sw_psa, rgeos::gCentroid(sw_psa,byid=TRUE))
 #####
-# load spatial data
-# psa zones
-psa<-rgdal::readOGR(dsn="/home/crimmins/RProjects/BurnPeriodTracker/shapes", layer="National_PSA_Current")
-sw_psa<-subset(psa, GACCName=="Southwest Coordination Center")
-# get psa centroids for factor order
-sw_psaDF<- cbind.data.frame(sw_psa, rgeos::gCentroid(sw_psa,byid=TRUE))
-#####
+
+###### New code with SF
+# Read the shapefile using sf
+psa <- st_read(dsn = "/home/crimmins/RProjects/BurnPeriodTracker/shapes", layer = "National_PSA_Current")
+# Subset for the Southwest Coordination Center
+sw_psa <- psa[psa$GACCName == "Southwest Coordination Center", ]
+# Compute centroids for factor order
+sw_psa_centroids <- st_centroid(sw_psa)
+# Convert to data frame and combine with PSA data
+sw_psaDF <- cbind.data.frame(sw_psa, st_coordinates(sw_psa_centroids))
+sw_psaDF <- st_drop_geometry(sw_psaDF)
+######
+
 
 ##### load data from burnPeriodClimo.R ----
 # load in RAWS data
@@ -61,7 +78,7 @@ mapList<-list()
 # set years to loop through 
 
 # WIMS available back to 2014
-yrs<-c(2014:2014)
+yrs<-c(2024:2024)
 
 for(l in 1:length(yrs)){
   arcYR<-yrs[l]
@@ -94,7 +111,7 @@ for(l in 1:length(yrs)){
       dayQuantiles<-tidyr::fill(dayQuantiles, rollAvg, .direction = "downup")
       
       # get recent RAWS data
-      url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-",arcYR,"&end=31-Dec-",arcYR,"&time=&sort=&ndays=")
+      url<-paste0("https://famprod.nwcg.gov/prod-wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-",arcYR,"&end=31-Dec-",arcYR,"&time=&sort=&ndays=")
       # past year
       #url<-paste0("https://famprod.nwcg.gov/wims/xsql/obs.xsql?stn=",temp$StationNum[1],"&sig=&user=&type=&start=01-Jan-","2021","&end=31-Dec-","2021","&time=&sort=&ndays=")
       tryCatch({
@@ -212,13 +229,15 @@ for(l in 1:length(yrs)){
         # point<-as.data.frame(t((out$meta$ll)))
         # # inset map:
         # zoomLev<-5
-        sw_psa_df<-fortify(sw_psa)
+        #sw_psa_df<-fortify(sw_psa)
         stationLatLon<-temp[1,c("LATITUDE","LONGITUDE")]
         insetmap<-ggplot() +
           geom_polygon(data = states, aes(x = long, y = lat, group = group), fill=NA, color="black", size=0.1)  +
-          geom_polygon(data = sw_psa_df, aes(x = long, y = lat, group = group), fill="lightgrey", color="grey", alpha=0.8)  + # get the state border back on top
+          #geom_polygon(data = sw_psa_df, aes(x = long, y = lat, group = group), fill="lightgrey", color="grey", alpha=0.8)  + # get the state border back on top
+          geom_sf(data = sw_psa, fill = "lightgrey", color = "grey")+
           #coord_fixed(xlim=c(out$meta$ll[1]-zoomLev, out$meta$ll[1]+zoomLev), ylim=c(out$meta$ll[2]-zoomLev, out$meta$ll[2]+zoomLev), ratio = 1) +
-          coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
+          #coord_fixed(xlim=c(-115, -102.75), ylim=c(31, 37.5), ratio = 1) +
+          coord_sf(xlim = c(-115, -102.75), ylim = c(31, 37.5), expand = FALSE) +
           geom_point(data = stationLatLon, aes(x = LONGITUDE, y = LATITUDE), size=0.75, color='red')+
           theme_bw(base_size=5)+
           theme(axis.title.x=element_blank(),
