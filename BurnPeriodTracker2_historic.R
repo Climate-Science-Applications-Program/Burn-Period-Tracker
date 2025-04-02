@@ -263,7 +263,7 @@ for(l in 1:length(yrs)){
         # Call back the plot
         plot <- image_read(paste0("/home/crimmins/RProjects/BurnPeriodTracker/archive/",arcYR,"/plots/",temp$STA_NAME[1],"_BurnPeriod.png"))
         # And bring in a logo
-        logo_raw <- image_read("/home/crimmins/RProjects/BurnPeriodTracker/CLIMAS_UACOOP_SWCC_horiz.png") 
+        logo_raw <- image_read("/home/crimmins/RProjects/logos/CLIMAS_UACOOP_SWCC_horiz.png") 
         logo <- image_resize(logo_raw, geometry_size_percent(width=70,height = 70))
         # Stack them on top of each other
         #final_plot <- image_append((c(plot, logo)), stack = TRUE)
