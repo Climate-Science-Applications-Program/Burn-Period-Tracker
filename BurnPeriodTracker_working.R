@@ -351,7 +351,7 @@ for(i in 1:length(burnList)){
     print(paste0(i, " of ",length(burnList)))
     
     # store data
-    temp2<-cbind.data.frame(temp$STA_NAME[1],temp$StationNum[1],temp$LATITUDE[1],temp$LONGITUDE[1], temp$elev[1], currBurnHRS$Burn_hours[max(which(currBurnHRS$n_hours==24))])
+    temp2<-cbind.data.frame(temp$STA_NAME[1],temp$StationNum[1],temp$LATITUDE[1],temp$LONGITUDE[1], temp$elev[1], currBurnHRS$Burn_hours[max(which(currBurnHRS$n_hours==24 & currBurnHRS$obType=="O"))])
       colnames(temp2)<-c("STA_NAME","StationNum","LATITUDE","LONGITUDE","Elevation","CurrBurnHours")
     pageData[[i]]<-temp2
     #
