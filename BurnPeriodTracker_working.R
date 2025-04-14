@@ -485,8 +485,9 @@ p<-ggplot() +
 
 p<-p +
   labs(caption=paste0("Updated: ",format(Sys.time(), "%Y-%m-%d"),
-                      "\nBurn Period is total hours/day with RH<20%\n'x' indicates observation not available\nRAWS Data Source: famprod.nwcg.gov"))+
-theme(plot.caption = element_text(vjust = 42))
+                      "\nBurn Period is total hours/day RH<20%\n'x' indicates observation not available\nRAWS Data Source: fems.fs2c.usda.gov"))+
+#theme(plot.caption = element_text(vjust = 42))
+theme(plot.caption = element_text(size = 9, vjust = 42))
 
 # write out file
 png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Observed_BurnPeriod.png"), width = 10, height = 6.25, units = "in", res = 300L)
@@ -538,8 +539,9 @@ p<-ggplot() +
 
 p<-p +
   labs(caption=paste0("Updated: ",format(Sys.time(), "%Y-%m-%d"),
-                      "\nBurn Period is total hours/day with RH<20%\n'x' ~ forecast not available at RAWS site\nForecast Data: https://digital.weather.gov/"))+
-  theme(plot.caption = element_text(vjust = 42))
+                      "\nBurn Period is total hours/day RH<20%\n'x' indicates observation not available\nFcst Data Source: fems.fs2c.usda.gov"))+
+  #theme(plot.caption = element_text(vjust = 42))
+  theme(plot.caption = element_text(size = 9, vjust = 42))
 
 # write out file
 png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Forecast_BurnPeriod.png"), width = 10, height = 6.25, units = "in", res = 300L)
@@ -591,10 +593,13 @@ for(i in 1:length(forecastDays)){
           panel.grid.minor = element_blank())+
     ggtitle(paste0("SWA Burn Period Forecast at RAWS: ",format(min(unique(foreTemp$date)),"%m-%d-%Y")))
   
-   p<-p + #annotation_custom(grob = g, xmin = as.Date(paste0(dumYr,"-11-19")), xmax = Inf, ymin = 20, ymax = Inf)+
+   #p<-p + #annotation_custom(grob = g, xmin = as.Date(paste0(dumYr,"-11-19")), xmax = Inf, ymin = 20, ymax = Inf)+
+   #   labs(caption=paste0("Updated: ",format(Sys.time(), "%Y-%m-%d"),
+   #                     "\nBurn Period is total hours/day with RH<20%\n'x' indicates forecast is not available for location\nForecast Data Source: https://digital.weather.gov/"))
+   p<-p +
      labs(caption=paste0("Updated: ",format(Sys.time(), "%Y-%m-%d"),
-                         "\nBurn Period is total hours/day with RH<20%\n'x' indicates forecast is not available for location\nForecast Data Source: https://digital.weather.gov/"))
-  
+                         "\nBurn Period is total hours/day RH<20%\n'x' indicates observation not available\nFcst Data Source: fems.fs2c.usda.gov"))
+   
   # write out file
   png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Forecast_BurnPeriod_day",i,".png"), width = 11, height = 6, units = "in", res = 300L)
   #grid.newpage()
@@ -610,7 +615,7 @@ for(i in 1:length(forecastDays)){
   # Stack them on top of each other
   #final_plot <- image_append((c(plot, logo)), stack = TRUE)
   #final_plot <- image_mosaic((c(plot, logo)))
-  final_plot <- image_composite(plot, logo, offset = "+100+1600")
+  final_plot <- image_composite(plot, logo, offset = "+255+1600")
   # And overwrite the plot without a logo
   image_write(final_plot, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Forecast_BurnPeriod_day",i,".png"))
   # ----
