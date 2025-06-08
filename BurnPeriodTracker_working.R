@@ -397,6 +397,8 @@ proc.time() - ptm
 # save environment for diagnostics
 save.image("~/RProjects/BurnPeriodTracker/burnPeriodEnv.RData")
 
+#load("~/RProjects/BurnPeriodTracker/burnPeriodEnv.RData")
+
 # #####
 # create map page
 library(leaflet)
@@ -514,6 +516,11 @@ foreObs<-subset(mapObs,var=="Forecast")
   foreObs<-foreObs[foreObs$date >= Sys.Date() & foreObs$date <= Sys.Date()+6, ]
   foreObs$symbol<-ifelse(is.na(foreObs$Burn_hours),2,1)
 
+# dynamically adjust caption vertical justification based on number of panels
+num_panels <- length(unique(foreObs$date))
+caption_vjust <- ifelse(num_panels < 7, 4, 42)  # adjust as needed
+logo_offset <- ifelse(num_panels < 7, "+935+1490","+935+1300")  # adjust logo offset based on number of panels
+  
 # forecast map  
 p<-ggplot() +
   geom_polygon(data = states, aes(x = long, y = lat, group = group), fill=NA, color="black", size=0.1)  +
@@ -541,7 +548,7 @@ p<-p +
   labs(caption=paste0("Updated: ",format(Sys.time(), "%Y-%m-%d"),
                       "\nBurn Period is total hours/day RH<20%\n'x' indicates observation not available\nFcst Data Source: fems.fs2c.usda.gov"))+
   #theme(plot.caption = element_text(vjust = 42))
-  theme(plot.caption = element_text(size = 9, vjust = 42))
+  theme(plot.caption = element_text(size = 9, vjust = caption_vjust))
 
 # write out file
 png(paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Forecast_BurnPeriod.png"), width = 10, height = 6.25, units = "in", res = 300L)
@@ -558,7 +565,7 @@ logo <- image_resize(logo_raw, geometry_size_percent(width=70,height = 70))
 # Stack them on top of each other
 #final_plot <- image_append((c(plot, logo)), stack = TRUE)
 #final_plot <- image_mosaic((c(plot, logo)))
-final_plot <- image_composite(plot, logo, offset = "+935+1300")
+final_plot <- image_composite(plot, logo, offset = logo_offset) # "+935+1300"
 # And overwrite the plot without a logo
 image_write(final_plot, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Forecast_BurnPeriod.png"))
 # ----
@@ -615,7 +622,7 @@ for(i in 1:length(forecastDays)){
   # Stack them on top of each other
   #final_plot <- image_append((c(plot, logo)), stack = TRUE)
   #final_plot <- image_mosaic((c(plot, logo)))
-  final_plot <- image_composite(plot, logo, offset = "+255+1600")
+  final_plot <- image_composite(plot, logo, offset = "+255+1600") 
   # And overwrite the plot without a logo
   image_write(final_plot, paste0("/home/crimmins/RProjects/BurnPeriodTracker/plots/maps/Forecast_BurnPeriod_day",i,".png"))
   # ----
