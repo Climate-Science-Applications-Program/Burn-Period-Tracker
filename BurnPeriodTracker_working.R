@@ -159,7 +159,8 @@ for(i in 1:length(burnList)){
                 rh_lt_20 = sum(as.numeric(as.character(rh)) <= 20, na.rm = TRUE),
                 minRH = min(as.numeric(as.character(rh)), na.rm = TRUE),
                 maxRH = max(as.numeric(as.character(rh)), na.rm = TRUE),
-                obType =first(obs_type))
+                #obType =last(obs_type)) # changed from first to last
+                obType = names(which.max(table(obs_type)))) # this gets most frequent observation type
     currBurnHRS$doy<-format(currBurnHRS$date,"%j")
     currBurnHRS$doy<-as.numeric(currBurnHRS$doy)
     # set missing days to NA
@@ -546,7 +547,7 @@ p<-ggplot() +
 
 p<-p +
   labs(caption=paste0("Updated: ",format(Sys.time(), "%Y-%m-%d"),
-                      "\nBurn Period is total hours/day RH<20%\n'x' indicates observation not available\nFcst Data Source: fems.fs2c.usda.gov"))+
+                      "\nBurn Period is total hours/day RH<20%\n'x' indicates forecast not available\nFcst Data Source: fems.fs2c.usda.gov"))+
   #theme(plot.caption = element_text(vjust = 42))
   theme(plot.caption = element_text(size = 9, vjust = caption_vjust))
 
