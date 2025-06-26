@@ -141,8 +141,10 @@ for(i in 1:length(burnList)){
   # subset to current year
   currYear<-subset(currYear, year==as.numeric(format(Sys.Date(), "%Y")))
   # thin dataframe and rename columns
-  currYear<-currYear[,c("StationId","temp$STA_NAME[1]","temp$LONGITUDE[1]","temp$LATITUDE[1]",
-                          "date","time","day_of_year","year","ObservationType","RelativeHumidity...")]
+  #currYear<-currYear[,c("StationId","temp$STA_NAME[1]","temp$LONGITUDE[1]","temp$LATITUDE[1]",
+  #                        "date","time","day_of_year","year","ObservationType","RelativeHumidity...")] # colname fixed with FEMS change
+  currYear<-currYear[,c("temp$StationNum[1]","temp$STA_NAME[1]","temp$LONGITUDE[1]","temp$LATITUDE[1]",
+                        "date","time","day_of_year","year","ObservationType","RelativeHumidity...")]
   colnames(currYear)<-c("sta_id","sta_nm","latitude","longitude","obs_dt","obs_tm","doy","year","obs_type","rh")
   currYear$date<-currYear$obs_dt
   # get current Year numeric
