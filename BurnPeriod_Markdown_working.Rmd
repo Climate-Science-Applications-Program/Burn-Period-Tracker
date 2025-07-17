@@ -47,23 +47,40 @@ pal<- colorNumeric((c('#deebf7','#ffeda0','#feb24c','#f03b20')), length(pageTabl
 leaflet(width="100%") %>%
   #setView(-109, 34.6, zoom = 6.4) %>%
   addProviderTiles(providers$Esri.WorldTopoMap) %>%
+  
+  # 1. Create custom panes with explicit z-index values
+  addMapPane("polygons", zIndex = 410) %>%
+  addMapPane("markers", zIndex = 420) %>%  # higher = on top
+  
   # options = providerTileOptions(minZoom = 6.25)
   #addMarkers(lng=stationThin$lon, lat=stationThin$lat, popup=stationThin$names,
   #           labelOptions = labelOptions(noHide = T))
+  # addCircleMarkers(pageTable$Longitude, pageTable$Latitude,
+  #                   popup = lapply(stnLabs, htmltools::HTML),
+  #                  label = lapply(stnLabs, htmltools::HTML),
+  #                  radius = 5.5,
+  #                  color = "black",
+  #                  fillOpacity = 0.9,
+  #                  fillColor =  pal(pageTable$`Latest Burn Period`)) %>%
+  
+ addEsriFeatureLayer(
+    url = fires, color="red", labelProperty = "poly_IncidentName", labelOptions = labelOptions(textsize = "12px"),
+    options = pathOptions(pane = "polygons")) %>%
+   
+  addLegend("bottomright", pal = pal, values = c(0,24),
+            title = paste0("Burn Period (hrs): </br> ",format((Sys.Date()-1),"%m-%d-%Y")),
+            opacity = 1,
+            labFormat = labelFormat(transform = function(x) sort(x, decreasing = FALSE))) %>%
+
   addCircleMarkers(pageTable$Longitude, pageTable$Latitude,
                     popup = lapply(stnLabs, htmltools::HTML),
                    label = lapply(stnLabs, htmltools::HTML),
                    radius = 5.5,
                    color = "black",
                    fillOpacity = 0.9,
-                   fillColor =  pal(pageTable$`Latest Burn Period`)) %>%
-  
- addEsriFeatureLayer(
-    url = fires, color="red", labelProperty = "poly_IncidentName", labelOptions = labelOptions(textsize = "12px")) %>%
-   addLegend("bottomright", pal = pal, values = c(0,24),
-            title = paste0("Burn Period (hrs): </br> ",format((Sys.Date()-1),"%m-%d-%Y")),
-            opacity = 1,
-            labFormat = labelFormat(transform = function(x) sort(x, decreasing = FALSE)))
+                   fillColor =  pal(pageTable$`Latest Burn Period`),
+                   options = pathOptions(pane = "markers")) 
+
     # popupProperty = JS(paste0(
     # "function(feature) {",
     # "  return L.Util.template(",
