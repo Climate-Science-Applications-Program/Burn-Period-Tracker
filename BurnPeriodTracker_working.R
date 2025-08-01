@@ -33,33 +33,77 @@ library(lubridate)
 Sys.setenv(RSTUDIO_PANDOC="/usr/bin/pandoc")
 
 ##### Functions -----
+##### old download RAWS function ----
+# download_raws <- function(station_id, start_date, end_date) {
+#   # Base URL for the API
+#   base_url <- "https://fems.fs2c.usda.gov/api/climatology/download-weather"
+#   
+#   # Construct query parameters
+#   query_params <- list(
+#     stationIds = station_id,
+#     startDate = paste0(start_date, "T23:30:00Z"),
+#     endDate = paste0(end_date, "T23:29:59Z"),
+#     dataset = "all",
+#     dataFormat = "csv",
+#     dataIncrement = "hourly",
+#     stationtypes = "RAWS(SATNFDRS)"
+#   )
+#   
+#   # Construct the full URL
+#   url <- paste0(base_url, "?", 
+#                 paste(names(query_params), query_params, sep = "=", collapse = "&"))
+#   
+#   # Download the CSV data
+#   temp_file <- tempfile(fileext = ".csv")
+#   download.file(url, temp_file, mode = "wb")
+#   
+#   # Read the CSV into a dataframe
+#   weather_data <- read.csv(temp_file, stringsAsFactors = FALSE)
+#   
+#   # Return the dataframe
+#   return(weather_data)
+# }
+#####
 download_raws <- function(station_id, start_date, end_date) {
-  # Base URL for the API
-  base_url <- "https://fems.fs2c.usda.gov/api/climatology/download-weather"
+  library(httr)
   
-  # Construct query parameters
-  query_params <- list(
-    stationIds = station_id,
-    startDate = paste0(start_date, "T23:30:00Z"),
-    endDate = paste0(end_date, "T23:29:59Z"),
-    dataset = "all",
-    dataFormat = "csv",
-    dataIncrement = "hourly",
-    stationtypes = "RAWS(SATNFDRS)"
+  base_url <- "https://fems.fs2c.usda.gov/api/climatology/download-weather"
+  start_iso <- paste0(start_date, "T23:30:00Z")
+  end_iso   <- paste0(end_date,   "T23:29:59Z")
+  
+  query <- list(
+    stationIds    = station_id,
+    startDate     = start_iso,
+    endDate       = end_iso,
+    dataset       = "all",
+    dataFormat    = "csv",
+    dataIncrement = "hourly"
+    # , stationtypes = "RAWS(SATNFDRS)"
   )
   
-  # Construct the full URL
-  url <- paste0(base_url, "?", 
-                paste(names(query_params), query_params, sep = "=", collapse = "&"))
+  ua <- httr::user_agent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+  )
   
-  # Download the CSV data
   temp_file <- tempfile(fileext = ".csv")
-  download.file(url, temp_file, mode = "wb")
+  resp <- httr::RETRY(
+    "GET", base_url, query = query, ua,
+    httr::add_headers(
+      Referer = "https://fems.fs2c.usda.gov/download",
+      Origin  = "https://fems.fs2c.usda.gov",
+      `Accept` = "text/csv,application/octet-stream;q=0.9,*/*;q=0.8",
+      `Accept-Language` = "en-US,en;q=0.9"
+    ),
+    httr::write_disk(temp_file, overwrite = TRUE),
+    times = 3, pause_min = 1, pause_cap = 4
+  )
   
-  # Read the CSV into a dataframe
+  if (httr::status_code(resp) != 200) {
+    stop("download_raws() failed: HTTP ", httr::status_code(resp),
+         " — ", substr(httr::content(resp, "text"), 1, 200))
+  }
+  
   weather_data <- read.csv(temp_file, stringsAsFactors = FALSE)
-  
-  # Return the dataframe
   return(weather_data)
 }
 #####
